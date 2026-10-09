@@ -28,7 +28,7 @@
   --primary:#1C2A42;
   --primary-ink:#FFFFFF;
   /* 狀態 */
-  --go:#0E7C6F; --go-soft:#DCF2EE;
+  --go:#0E7C6F; --go-soft:#DCF2EE; --on-go:#FFFFFF;
   --info:#2A5DB0; --info-soft:#E3ECFA;
   --warn:#94570A; --warn-soft:#FFF0D6;
   --bad:#B4462F; --bad-soft:#FBE4DE;
@@ -51,7 +51,7 @@
     --night:#0A101B; --night-2:#131C2D; --night-3:#24324A;
     --lamp-soft:#3A2A0E; --lamp-ink:#FFD58A;
     --primary:#E8EDF5; --primary-ink:#0B111C;
-    --go:#4CC3B2; --go-soft:#10302C; --info:#86AEF0; --info-soft:#15243D; --warn:#F2B25C; --warn-soft:#33240D; --bad:#F08A72; --bad-soft:#3A1A14;
+    --go:#4CC3B2; --go-soft:#10302C; --on-go:#06231F; --info:#86AEF0; --info-soft:#15243D; --warn:#F2B25C; --warn-soft:#33240D; --bad:#F08A72; --bad-soft:#3A1A14;
     --s-vacant:#d55181; --s-self:#3987e5; --s-social:#c98500;
     --grid:#202B3C; --axis:#3A475D; --bar-1:#7B8BA6;
     --shadow:0 1px 2px rgba(0,0,0,.4);
@@ -63,7 +63,7 @@
   --night:#0A101B; --night-2:#131C2D; --night-3:#24324A;
   --lamp-soft:#3A2A0E; --lamp-ink:#FFD58A;
   --primary:#E8EDF5; --primary-ink:#0B111C;
-  --go:#4CC3B2; --go-soft:#10302C; --info:#86AEF0; --info-soft:#15243D; --warn:#F2B25C; --warn-soft:#33240D; --bad:#F08A72; --bad-soft:#3A1A14;
+  --go:#4CC3B2; --go-soft:#10302C; --on-go:#06231F; --info:#86AEF0; --info-soft:#15243D; --warn:#F2B25C; --warn-soft:#33240D; --bad:#F08A72; --bad-soft:#3A1A14;
   --s-vacant:#d55181; --s-self:#3987e5; --s-social:#c98500;
   --grid:#202B3C; --axis:#3A475D; --bar-1:#7B8BA6;
   --shadow:0 1px 2px rgba(0,0,0,.4);
@@ -98,7 +98,7 @@ svg{flex:none}
 .btn.primary{background:var(--primary);border-color:var(--primary);color:var(--primary-ink)}
 .btn.lamp{background:var(--lamp);border-color:var(--lamp);color:var(--on-lamp)}
 .btn.lamp:hover{background:var(--lamp-2);border-color:var(--lamp-2)}
-.btn.go{background:var(--go);border-color:var(--go);color:#fff}
+.btn.go{background:var(--go);border-color:var(--go);color:var(--on-go)}
 .btn.ghost{background:transparent}
 .btn.on-night{background:transparent;color:var(--night-ink);border-color:rgba(238,242,248,.35)}
 .btn.on-night:hover{border-color:var(--night-ink)}
