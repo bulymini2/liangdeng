@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<!-- build:head -->
+<title>亮燈空屋顧問</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Noto+Sans+TC:wght@400;500;700;900&display=swap">
+<link rel="stylesheet" href="css/style.css">
+<!-- /build:head -->
+</head>
+<body>
+<!-- build:body -->
+<header class="top">
+  <div class="top-in">
+    <div class="plate" aria-label="亮燈 空屋活化顧問">
+      <span class="bulb" aria-hidden="true"></span>
+      <div><b>亮燈</b><small>空屋活化顧問 · 原型</small></div>
+    </div>
+    <div class="case-line">
+      <strong id="caseTitle">新案件</strong>
+      <span class="chip demo" id="demoChip" hidden>示範案例</span>
+    </div>
+    <div class="top-actions">
+      <button class="btn small ghost" id="btnDemo" type="button">載入示範案例</button>
+      <button class="btn small ghost" id="btnNew" type="button">開新案件</button>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <nav class="facade" aria-label="拜訪流程">
+    <button class="win" type="button" data-step="1"><span class="pane" aria-hidden="true"></span><span class="lbl"><i>1</i>屋況</span></button>
+    <button class="win" type="button" data-step="2"><span class="pane" aria-hidden="true"></span><span class="lbl"><i>2</i>樣貌</span></button>
+    <button class="win" type="button" data-step="3"><span class="pane" aria-hidden="true"></span><span class="lbl"><i>3</i>資格</span></button>
+    <button class="win" type="button" data-step="4"><span class="pane" aria-hidden="true"></span><span class="lbl"><i>4</i>三條路</span></button>
+    <button class="win" type="button" data-step="5"><span class="pane" aria-hidden="true"></span><span class="lbl"><i>5</i>報告</span></button>
+  </nav>
+
+  <div class="layout">
+    <main>
+      <div class="banner" id="demoBanner" hidden>
+        <span class="bulb" aria-hidden="true"></span>
+        <p>這是示範案例：竹北 25 坪、屋齡 32 年的繼承老公寓，屋況和金額都是示範值。按「開新案件」後加入現場照片，就能用 AI 診斷。</p>
+      </div>
+      <p class="ai-off" id="aiOff" hidden></p>
+
+      <!-- 步驟 1：屋況 -->
+      <section class="panel" data-panel="1">
+        <div class="panel-head">
+          <h2>屋況診斷與修繕清單</h2>
+          <p class="lede">拍下每個空間，AI 標出壁癌、水漬和老舊設備，再對應到修繕項目。金額由下方的估價表計算，AI 只負責看照片。</p>
+        </div>
+
+        <div class="card">
+          <h3>房屋基本資料</h3>
+          <div class="fields">
+            <label class="field"><span>縣市</span>
+              <select id="fCity"><option value="hsinchu">新竹縣</option><option value="taipei">台北市</option></select>
+            </label>
+            <label class="field wide"><span>地址或社區（選填）</span><input id="fAddr" type="text" autocomplete="off" placeholder="例如：竹北市○○路"></label>
+            <label class="field"><span>室內坪數（主建物）</span><input id="fPing" type="number" min="1" step="0.1" inputmode="decimal"></label>
+            <label class="field"><span>屋齡（年）</span><input id="fAge" type="number" min="0" step="1" inputmode="numeric"></label>
+            <div class="field"><span>格局</span>
+              <div class="triple"><input id="fRooms" type="number" min="0" aria-label="房">房<input id="fHalls" type="number" min="0" aria-label="廳">廳<input id="fBaths" type="number" min="0" aria-label="衛">衛</div>
+            </div>
+            <label class="field"><span>近一年月均用電（度）</span><input id="fKwh" type="number" min="0" step="1" inputmode="numeric"></label>
+          </div>
+          <p class="hint" id="kwhNote"></p>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><h3>現場照片</h3><span class="hint" id="photoCount"></span></div>
+          <div class="photos" id="photoGrid"></div>
+          <div class="row">
+            <label class="btn" for="photoInput">加入照片</label>
+            <input class="vh" id="photoInput" type="file" accept="image/*" multiple>
+            <button class="btn primary" id="btnDiag" type="button">AI 診斷照片</button>
+            <button class="btn ghost" id="btnDiagStop" type="button" hidden>停止</button>
+          </div>
+          <p class="status" id="diagStatus" role="status" aria-live="polite"></p>
+        </div>
+
+        <div class="card" id="findCard">
+          <h3>AI 看到的狀況</h3>
+          <p class="overall" id="overall"></p>
+          <div class="finds" id="finds"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h3>修繕清單</h3>
+            <div class="total" id="repairTotal"></div>
+          </div>
+          <div class="rl" id="repairList"></div>
+          <details>
+            <summary>加入其他項目</summary>
+            <div class="quick" id="quickAdd">
+              <button class="btn small" type="button" data-add="electrical">配電盤升級</button>
+              <button class="btn small" type="button" data-add="leak_check">儀器抓漏檢測</button>
+              <button class="btn small" type="button" data-add="aircon">冷氣新裝</button>
+              <button class="btn small" type="button" data-add="window">鋁窗更換</button>
+              <button class="btn small" type="button" data-add="water_heater">熱水器更換</button>
+            </div>
+            <form class="custom" id="customForm">
+              <input id="customName" type="text" placeholder="項目名稱，例如：工班報價－廚房矽利康" aria-label="自訂項目名稱">
+              <input id="customAmt" type="number" min="0" step="100" placeholder="金額（元）" aria-label="自訂項目金額">
+              <button class="btn small" type="submit">加入</button>
+            </form>
+          </details>
+          <details>
+            <summary>估價基準與來源</summary>
+            <div class="table-wrap"><table class="basis" id="basisTable"></table></div>
+            <p class="hint">這一版以 PRO360 達人網 2024–2026 年的公開報價統計為基準；分級組合與部分換算為原型假設，已在表中標明。正式版會改用合作工班的報價單，並以實際施工金額持續校正。</p>
+          </details>
+        </div>
+        <div class="nav"><span></span><button class="btn lamp" type="button" data-go="2">下一步：整理後樣貌</button></div>
+      </section>
+
+      <!-- 步驟 2：整理後樣貌 -->
+      <section class="panel" data-panel="2" hidden>
+        <div class="panel-head">
+          <h2>整理後的樣子</h2>
+          <p class="lede">讓屋主看到自己的房子整理後的樣子。這一版由 AI 寫好改圖指令，貼到影像生成工具產生圖片後上傳；正式版會在後台直接產生。</p>
+        </div>
+        <div class="card">
+          <h3>選一張照片</h3>
+          <div class="choose" id="chooseList"></div>
+          <div class="row">
+            <label class="btn small" for="beforeInput">另外上傳一張</label>
+            <input class="vh" id="beforeInput" type="file" accept="image/*">
+          </div>
+          <div class="row">
+            <button class="btn primary" id="btnPrompt" type="button">AI 寫改圖指令</button>
+            <button class="btn ghost" id="btnPromptStop" type="button" hidden>停止</button>
+          </div>
+          <p class="status" id="promptStatus" role="status" aria-live="polite"></p>
+          <div class="prompt-box" id="promptBox" hidden>
+            <p class="hint" id="promptZh"></p>
+            <pre id="promptEn"></pre>
+            <div class="row"><button class="btn small" id="btnCopyPrompt" type="button">複製英文指令</button></div>
+          </div>
+          <ol class="steps">
+            <li>開啟影像生成工具（例如 Gemini 或 ChatGPT），上傳同一張原圖。</li>
+            <li>貼上英文指令，產生圖片後存到手機。</li>
+            <li>把產生的圖片上傳到下方。</li>
+          </ol>
+          <div class="row">
+            <label class="btn" for="afterInput">上傳整理後的圖片</label>
+            <input class="vh" id="afterInput" type="file" accept="image/*">
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3>整理前後對照</h3><span class="hint">左右拖曳中間的線</span></div>
+          <div id="compareWrap"></div>
+        </div>
+        <div class="nav"><button class="btn ghost" type="button" data-go="1">上一步</button><button class="btn lamp" type="button" data-go="3">下一步：資格初篩</button></div>
+      </section>
+
+      <!-- 步驟 3：謄本與資格 -->
+      <section class="panel" data-panel="3" hidden>
+        <div class="panel-head">
+          <h2>謄本判讀與資格初篩</h2>
+          <p class="lede">拍下建物謄本，AI 讀出主要用途、建築完成日期和所有權人數，初步判斷能不能加入社宅包租代管。最後以業者審查為準。</p>
+        </div>
+        <div class="card">
+          <h3>建物謄本</h3>
+          <div class="row">
+            <label class="btn" for="deedInput">上傳謄本照片</label>
+            <input class="vh" id="deedInput" type="file" accept="image/*">
+            <button class="btn primary" id="btnDeed" type="button">AI 判讀謄本</button>
+            <button class="btn ghost" id="btnDeedStop" type="button" hidden>停止</button>
+          </div>
+          <div id="deedThumb"></div>
+          <p class="status" id="deedStatus" role="status" aria-live="polite"></p>
+          <p class="hint">示範或測試時，請先遮住所有權人姓名與統一編號。AI 只回傳下表欄位，不輸出姓名與身分證字號。</p>
+        </div>
+        <div class="card" id="deedCard">
+          <h3>判讀結果</h3>
+          <div id="deedResult"></div>
+        </div>
+        <div class="nav"><button class="btn ghost" type="button" data-go="2">上一步</button><button class="btn lamp" type="button" data-go="4">下一步：三條路試算</button></div>
+      </section>
+
+      <!-- 步驟 4：三條路試算 -->
+      <section class="panel" data-panel="4" hidden>
+        <div class="panel-head">
+          <h2>三條路，十年算給屋主看</h2>
+          <p class="lede">同一間房子，繼續空著、自己出租、交給社宅包租代管，十年各剩多少錢。稅率依縣市規則計算，每條規則都附來源；這一步沒有用到 AI。</p>
+        </div>
+        <div class="card">
+          <h3>房子與屋主</h3>
+          <div class="fields">
+            <label class="field"><span>房屋評定現值（元）</span><input id="cHouse" type="number" min="0" step="1000" inputmode="numeric"><small class="hint">房屋稅單上的「課稅現值」</small></label>
+            <label class="field"><span>地價稅課稅地價（元）</span><input id="cLand" type="number" min="0" step="1000" inputmode="numeric"><small class="hint">地價稅單上的「課稅地價」</small></label>
+            <label class="field"><span>全國非自住住宅戶數</span><input id="cCount" type="number" min="1" max="50" step="1" inputmode="numeric"><small class="hint">屋主名下不是自己住的房子，含這戶</small></label>
+            <label class="field"><span>屋主綜所稅級距</span>
+              <select id="cBracket"><option value="0.05">5%</option><option value="0.12">12%</option><option value="0.2">20%</option><option value="0.3">30%</option><option value="0.4">40%</option></select>
+            </label>
+            <label class="field check wide"><input id="cInherited" type="checkbox"><span>繼承取得，並與家人共有（空置時適用較低的特定稅率）</span></label>
+          </div>
+        </div>
+        <div class="card">
+          <h3>出租條件</h3>
+          <div class="fields">
+            <label class="field"><span>整理後市場月租（元）</span><input id="cRent" type="number" min="0" step="500" inputmode="numeric"><small class="hint">可參考內政部實價登錄的租金行情</small></label>
+            <label class="field"><span>整理費用（元）</span><input id="cReno" type="number" min="0" step="1000" inputmode="numeric"><small class="hint" id="cRenoHint"></small></label>
+            <div class="field"><span>社宅方案</span>
+              <div class="seg" role="radiogroup" aria-label="社宅方案" id="modeSeg">
+                <button type="button" role="radio" data-mode="包租" aria-checked="true">包租 8 折</button>
+                <button type="button" role="radio" data-mode="代管" aria-checked="false">代管 9 折</button>
+              </div>
+              <small class="hint" id="modeHint"></small>
+            </div>
+          </div>
+          <details>
+            <summary>其他假設</summary>
+            <div class="fields">
+              <label class="field"><span>每年空租月數（自己出租、代管）</span><input id="cVac" type="number" min="0" max="11" step="0.5"></label>
+              <label class="field"><span>找房客費用（每年幾個月租金）</span><input id="cAgent" type="number" min="0" max="3" step="0.05"><small class="hint">預設 0.25：每兩年換約一次、仲介費半個月</small></label>
+              <label class="field"><span>每年維修費（元）</span><input id="cMaint" type="number" min="0" step="1000"><small class="hint">兩條出租路線用同一個假設</small></label>
+            </div>
+          </details>
+        </div>
+
+        <div class="card">
+          <p class="conclusion" id="conclusion"></p>
+          <div class="paths" id="paths"></div>
+          <div class="card-head"><h3>十年累計淨收入</h3><div class="legend" id="legend"></div></div>
+          <div class="chart" id="cumChart"></div>
+          <p class="hint">第 0 年是整理費用。滑過或點圖表可看每一年的累計金額。</p>
+          <details>
+            <summary>每年收支明細</summary>
+            <div class="table-wrap"><table id="calcTable"></table></div>
+          </details>
+        </div>
+
+        <div class="card">
+          <h3>這個案件用到的規則</h3>
+          <ul class="rules" id="rulesList"></ul>
+        </div>
+        <div class="nav"><button class="btn ghost" type="button" data-go="3">上一步</button><button class="btn lamp" type="button" data-go="5">下一步：報告</button></div>
+      </section>
+
+      <!-- 步驟 5：報告 -->
+      <section class="panel" data-panel="5" hidden>
+        <div class="panel-head">
+          <h2>給屋主帶走的報告</h2>
+          <p class="lede">先把屋主在意的事說清楚，再把整份結果交給他和家人討論。</p>
+        </div>
+        <div class="card">
+          <h3>屋主的顧慮</h3>
+          <div class="chips" id="concernChips"></div>
+          <label class="field"><span>其他顧慮（選填）</span><textarea id="concernText" rows="2" placeholder="例如：兩年後孫子可能要回竹北念書"></textarea></label>
+          <div class="row">
+            <button class="btn primary" id="btnExplain" type="button">AI 白話說明</button>
+            <button class="btn ghost" id="btnExplainStop" type="button" hidden>停止</button>
+          </div>
+          <p class="status" id="explainStatus" role="status" aria-live="polite"></p>
+          <p class="explain-out" id="explainOut"></p>
+          <p class="hint">AI 只拿到上一步算好的數字和規則，負責把它們說成白話，不自己計算。</p>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3>一頁報告預覽</h3>
+            <div class="row">
+              <button class="btn lamp" id="btnDownload" type="button">下載報告（HTML）</button>
+              <button class="btn" id="btnLine" type="button">複製 LINE 訊息</button>
+            </div>
+          </div>
+          <p class="status" id="reportStatus" role="status" aria-live="polite"></p>
+          <textarea class="line-ta" id="lineText" hidden aria-label="LINE 訊息內容"></textarea>
+          <div id="reportPreview"></div>
+        </div>
+        <div class="nav"><button class="btn ghost" type="button" data-go="4">上一步</button><span></span></div>
+      </section>
+    </main>
+
+    <aside class="summary" aria-label="案件摘要">
+      <div class="sum-block"><span class="eyebrow">案件</span><div id="sumCase"></div></div>
+      <div class="sum-block"><span class="eyebrow">整理費用估計</span><div class="sum-big" id="sumReno"></div><div class="hint" id="sumRenoRange"></div></div>
+      <div class="sum-block"><span class="eyebrow">十年淨收入</span><div id="sumBars"></div></div>
+      <p class="hint" id="sumNote"></p>
+    </aside>
+  </div>
+</div>
+
+<script src="js/util.js"></script>
+<script src="js/rules.js"></script>
+<script src="js/catalog.js"></script>
+<script src="js/calc.js"></script>
+<script src="js/deed.js"></script>
+<script src="js/prompts.js"></script>
+<script src="js/charts.js"></script>
+<script src="js/report.js"></script>
+<script src="js/platform.js"></script>
+<script src="js/app.js"></script>
+<!-- /build:body -->
+</body>
+</html>

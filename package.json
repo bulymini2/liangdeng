@@ -1,0 +1,16 @@
+{
+  "name": "liangdeng",
+  "version": "0.2.0",
+  "private": true,
+  "description": "亮燈：AI 空屋活化顧問原型",
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/unit/*.test.js",
+    "build": "node scripts/build.js",
+    "e2e": "node scripts/build.js && node --test --test-concurrency=1 test/e2e/*.test.js",
+    "dev": "python3 -m http.server 8000"
+  },
+  "devDependencies": {
+    "playwright": "1.56.1"
+  }
+}
