@@ -22,8 +22,8 @@
 .report h2{font-size:14px;margin:0 0 6px;letter-spacing:.06em;color:var(--muted)}
 .report section{display:grid;gap:8px;min-width:0}
 .rp-head{display:flex;gap:14px;align-items:center;flex-wrap:wrap;border-bottom:2px solid #1C2A42;padding-bottom:12px}
-.rp-plate{background:#121C2E;color:#fff;border-radius:8px;padding:6px 14px;display:grid;line-height:1.2;box-shadow:inset 3px 0 0 #FFB23F}
-.rp-plate b{font-size:18px;letter-spacing:.12em;font-weight:800;font-family:var(--font-display,inherit)}
+.rp-plate{background:#0B1322;color:#fff;border-radius:10px;padding:7px 14px;display:grid;line-height:1.25;box-shadow:inset 0 0 0 1px rgba(255,181,71,.45)}
+.rp-plate b{font-size:18px;letter-spacing:.14em;font-weight:900;color:#FFB547;font-family:var(--font-display,inherit)}
 .rp-plate span{font-size:10.5px;opacity:.9}
 .rp-meta p{margin:2px 0 0;color:var(--ink-2);font-size:13px}
 .rp-lead{font-size:16px;font-weight:700;margin:0}
@@ -46,7 +46,7 @@
 `;
 
   /** 下載的報告沒有頁面的 CSS，只帶淺色版的色彩設定。 */
-  const STANDALONE_CSS = ':root{--paper:#ECEFF2;--surface:#FFFFFF;--surface-2:#F4F6F8;--ink:#111A2B;--ink-2:#465165;--muted:#667085;--line:#D8DEE6;--axis:#B9C2CE;--font-display:"Chiron GoRound TC","Noto Sans TC",sans-serif;--s-vacant:#e87ba4;--s-self:#2a78d6;--s-social:#eda100;--font-ui:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;--font-num:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;color-scheme:light}' +
+  const STANDALONE_CSS = ':root{--paper:#ECEFF2;--surface:#FFFFFF;--surface-2:#F4F6F8;--ink:#111A2B;--ink-2:#465165;--muted:#667085;--line:#D8DEE6;--axis:#B9C2CE;--font-display:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;--s-vacant:#e87ba4;--s-self:#2a78d6;--s-social:#eda100;--font-ui:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;--font-num:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;color-scheme:light}' +
     '*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.65 var(--font-ui);padding:24px 16px}main{max-width:820px;margin:0 auto}img{max-width:100%}';
 
   function reportHTML(v, img) {
@@ -84,7 +84,7 @@
   /** 可以直接用瀏覽器打開、傳給屋主的完整 HTML 檔。 */
   function reportDocument(v, img) {
     return '<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>亮燈空屋評估報告</title>' +
-      '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chiron+GoRound+TC:wght@700;800&family=IBM+Plex+Mono:wght@400;600&family=Noto+Sans+TC:wght@400;700&display=swap">' +
+      '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap">' +
       `<style>${STANDALONE_CSS}${REPORT_CSS}</style></head><body><main>${reportHTML(v, img)}</main></body></html>`;
   }
 

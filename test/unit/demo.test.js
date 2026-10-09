@@ -62,3 +62,22 @@ test('示範案件的總覽統計', () => {
   assert.equal(s.signed, 2);
   assert.equal(s.devIncome, 31000);   // 竹東包租 18,000 + 湖口代管 13,000
 });
+
+test('開場街景：100 戶裡有 10 戶沒亮燈', () => {
+  const { svg, dark, units } = LD.intro.street({ id: 't' });
+  assert.equal(units, 100);
+  assert.equal((svg.match(/class="u"/g) || []).length + (svg.match(/class="u dark"/g) || []).length, 100);
+  assert.equal((svg.match(/class="u dark"/g) || []).length, 10);
+  assert.equal(new Set(dark).size, 10);
+  assert.ok(dark.every(i => Number.isInteger(i) && i >= 0 && i < 100));
+  const lit = LD.intro.street({ id: 't2', allLit: true });
+  assert.equal((lit.svg.match(/class="u dark"/g) || []).length, 0);
+  // 兩個街景放在同一頁，漸層與濾鏡的 id 不能重複
+  assert.ok(!lit.svg.includes('id="tWarm"') && lit.svg.includes('id="t2Warm"'));
+});
+
+test('開場街景的每一戶都是獨立的群組（不會互相包住）', () => {
+  const { svg } = LD.intro.street({ id: 'n' });
+  const opens = (svg.match(/<g\b/g) || []).length, closes = (svg.match(/<\/g>/g) || []).length;
+  assert.equal(opens, closes);
+});

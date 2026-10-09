@@ -18,6 +18,9 @@
     return nf.format(s) + ' 萬';
   };
 
+  /** 畫面上的句子：數字和前後的字用不換行空白黏住（「約 142 萬」不會拆成兩行），搭配 word-break: keep-all 只在標點換行 */
+  const glue = t => String(t).replace(/ (?=[-+]?\d)/g, '\u00a0').replace(/(\d%?) /g, '$1\u00a0');
+
   /** 0.026 → "2.6%" */
   const pct = r => (Math.round(r * 10000) / 100) + '%';
 
@@ -42,5 +45,5 @@
     }).join('、');
   }
 
-  LD.util = { esc, fmt, wan, pct, clampInt, today, uid, hrefOf, srcLinks };
+  LD.util = { esc, fmt, wan, pct, glue, clampInt, today, uid, hrefOf, srcLinks };
 })(globalThis.LD = globalThis.LD || {});

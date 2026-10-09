@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 
 // 和 index.html 的順序相同；app.js 會操作畫面，不在 Node 裡載入。
-const FILES = ['util.js', 'rules.js', 'catalog.js', 'calc.js', 'deed.js', 'prompts.js', 'charts.js', 'report.js', 'pipeline.js', 'store.js', 'demo.js', 'platform.js', 'tour.js'];
+const FILES = ['util.js', 'rules.js', 'catalog.js', 'calc.js', 'deed.js', 'prompts.js', 'charts.js', 'report.js', 'pipeline.js', 'store.js', 'demo.js', 'platform.js', 'motion.js', 'intro.js', 'tour.js'];
 
 export function loadLD() {
   const ctx = vm.createContext({ console });

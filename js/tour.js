@@ -47,7 +47,7 @@
     const s = steps[i];
     $('#tourCount').textContent = `${i + 1} / ${steps.length}`;
     $('#tourTitle').textContent = s.title;
-    $('#tourText').textContent = s.text;
+    $('#tourText').textContent = LD.util.glue(s.text);
     $('#tourBar').style.width = ((i + 1) / steps.length * 100) + '%';
     $('#tourPrev').disabled = i === 0;
     $('#tourNext').textContent = i === steps.length - 1 ? '完成' : '下一步';

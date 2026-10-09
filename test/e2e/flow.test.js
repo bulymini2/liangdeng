@@ -1,5 +1,6 @@
 // 端到端測試：用無頭 Chromium 打開頁面，從開場、導覽、案件總覽到拜訪五步驟都跑一遍。
 // AI 用假的 window.claude 代替（固定回覆），所以不花用量、結果可重現。
+// 瀏覽器設成「減少動態效果」：數字直接顯示最終值、開場不做捲動亮燈，測試不必等動畫。
 // 執行：npm run e2e（第一次要先 npx playwright install chromium）
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -58,7 +59,7 @@ let browser;
 before(async () => { browser = await chromium.launch(); });
 after(async () => { await browser.close(); });
 
-const newCtx = ({ claude = false, width = 1280 } = {}) => browser.newContext({ viewport: { width, height: 900 }, acceptDownloads: true })
+const newCtx = ({ claude = false, width = 1280 } = {}) => browser.newContext({ viewport: { width, height: 900 }, acceptDownloads: true, reducedMotion: 'reduce' })
   .then(async ctx => { if (claude) await ctx.addInitScript(fakeClaude); return ctx; });
 async function open(url, { ctx, claude = false, width = 1280, hash = '' } = {}) {
   ctx = ctx || await newCtx({ claude, width });
@@ -80,8 +81,14 @@ for (const [label, url] of Object.entries(TARGETS)) {
   test(`${label}：開場與一鍵導覽 14 步`, async () => {
     const { ctx, page, errors } = await open(url);
     assert.equal(await page.isVisible('#view-intro'), true, '第一次打開先看到開場');
-    assert.equal(await page.locator('#facade .w').count(), 100);
-    assert.equal(await page.locator('#facade .w.dark').count(), 10);
+    // 開場的街：100 戶裡有 10 戶沒亮燈；按「一次點亮」全部亮起來
+    assert.equal(await page.locator('#street .u').count(), 100);
+    assert.equal(await page.locator('#street .u.dark').count(), 10);
+    assert.equal(await text(page, '#litCount'), '已點亮 0 / 10 戶');
+    await page.click('#btnLightAll');
+    await page.waitForFunction(() => document.querySelector('#litCount').textContent === '10 戶全部亮燈');
+    assert.equal(await page.locator('#street .u.dark.lit').count(), 10);
+    assert.equal(await page.isHidden('#btnLightAll'), true, '全部亮燈後收起按鈕');
 
     await page.click('[data-tour="hero"] [data-action="tour"]');
     for (let i = 0; i < TOUR.length; i++) {
@@ -200,7 +207,8 @@ for (const [label, url] of Object.entries(TARGETS)) {
     await page.click('.page-head [data-action="new-case"]');
     await page.fill('#fAddr', '竹北市測試路');
     await page.fill('#fPing', '20');
-    assert.equal(await text(page, '#caseTitle'), '竹北市測試路 · 20 坪');
+    assert.equal(await text(page, '#caseTitle'), '竹北市測試路');
+    assert.equal(await text(page, '#casePing'), '20 坪');
     await page.setInputFiles('#photoInput', [photo('a.png', [200, 190, 170]), photo('b.png', [120, 130, 140])]);
     await page.waitForSelector('.ph >> nth=1');
     await page.click('.win[data-step="4"]');
@@ -225,18 +233,24 @@ for (const [label, url] of Object.entries(TARGETS)) {
     await page.waitForFunction(() => window.LD && window.LD.app);
     await page.reload();
     await page.waitForSelector('#view-visit:not([hidden])');
-    assert.equal(await text(page, '#caseTitle'), '竹北市測試路 · 20 坪');
+    assert.equal(await text(page, '#caseTitle'), '竹北市測試路');
+    assert.equal(await text(page, '#casePing'), '20 坪');
     assert.equal(await page.inputValue('#caseNote'), '週末再打電話');
     assert.equal(await page.inputValue('#caseStatus'), 'thinking');
     await page.click('.win[data-step="1"]');
     await page.waitForSelector('#photoGrid .ph-img[style*="data:image/jpeg"] >> nth=1');
 
-    // 刪除要按兩次
+    // 刪除後可以復原
     await page.click('#view-visit a.back');
     const del = page.locator('#caseList [data-del]');
     assert.equal(await del.count(), 1);
     await del.click();
-    assert.equal(await kpi(page, 0), '7');
+    assert.equal(await kpi(page, 0), '6');
+    assert.doesNotMatch(await text(page, '#caseList'), /竹北市測試路/);
+    assert.match(await text(page, '#toast'), /已刪除「竹北市測試路」/);
+    await page.click('#toast .toast-act');
+    assert.equal(await kpi(page, 0), '7', '按「復原」案件回來');
+    assert.match(await text(page, '#caseList'), /竹北市測試路/);
     await page.click('#caseList [data-del]');
     assert.equal(await kpi(page, 0), '6');
     assert.doesNotMatch(await text(page, '#caseList'), /竹北市測試路/);

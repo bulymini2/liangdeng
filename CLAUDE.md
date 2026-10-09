@@ -14,6 +14,13 @@
 - AI 與下載只透過 `js/platform.js`，畫面程式不直接呼叫 `window.claude` 或任何 API。API 金鑰不得出現在前端。
 - 圖片在畫面上用 data: 網址顯示，不用 blob: 網址（部分內嵌環境不允許）。
 
+## 畫面與動效
+
+- 字體只用思源黑體（Noto Sans TC）及系統備援，不要再加其他字體。
+- 動效放在 `js/motion.js`，一律尊重「減少動態效果」（`LD.motion.reduced()` 與 CSS 的 `prefers-reduced-motion`）。端到端測試用 `reducedMotion: 'reduce'` 執行。
+- 中文的標題、導言、結論用 `word-break: keep-all` 只在標點換行；動態產生的句子先經過 `LD.util.glue` 把數字和單位黏住。
+- 開場街景 `LD.intro.street()` 是純函式：100 戶、10 戶沒亮燈、群組標籤成對，由 `test/unit/demo.test.js` 把關。改了房子或暗窗，10 戶要留在橫座標 270–930 之間（手機會裁掉兩側）。
+
 ## 指令
 
 ```bash

@@ -3,191 +3,275 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="給包租代管業者的空屋開發工具：拍照診斷、謄本初篩、三條路十年試算，當場算給屋主看。">
+<meta name="theme-color" content="#0B1322">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230B1322'/%3E%3Crect x='8' y='7' width='16' height='18' rx='2' fill='%23FFB547'/%3E%3Cpath d='M16 7v18M8 16h16' stroke='%237A4700' stroke-opacity='.5' stroke-width='1.6'/%3E%3C/svg%3E">
 <!-- build:head -->
 <title>亮燈空屋顧問</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Chiron+GoRound+TC:wght@500;700;800&family=IBM+Plex+Mono:wght@400;600&family=Noto+Sans+TC:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap">
 <link rel="stylesheet" href="css/style.css">
 <!-- /build:head -->
 </head>
 <body>
 <!-- build:body -->
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
-  <symbol id="i-mark" viewBox="0 0 32 32"><rect x="5" y="3" width="22" height="27" rx="2.5" fill="currentColor"/><rect x="9" y="8" width="6" height="6" rx="1" fill="#2B3A55"/><rect x="17" y="8" width="6" height="6" rx="1" fill="#FFB23F"/><rect x="9" y="17" width="6" height="6" rx="1" fill="#2B3A55"/><rect x="17" y="17" width="6" height="6" rx="1" fill="#2B3A55"/><rect x="13.5" y="25" width="5" height="5" fill="#2B3A55"/></symbol>
-  <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 20V9l8-5 8 5v11h-5v-6H9v6z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
-  <symbol id="i-list" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 20V9.5l8-5.5 8 5.5V20h-5.2v-6H9.2v6z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24"><path d="M5 6.5h14M5 12h14M5 17.5h9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
   <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
-  <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5z" fill="currentColor"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M8.5 5.8v12.4l9.8-6.2z" fill="currentColor"/></symbol>
   <symbol id="i-back" viewBox="0 0 24 24"><path d="M14.5 5.5 8 12l6.5 6.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="M12 5v13m-5.5-5.5L12 18l5.5-5.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
 </svg>
+<a class="skip" href="#main">跳到主要內容</a>
 
 <header class="topbar">
   <div class="topbar-in">
-    <a class="brand" href="#intro" aria-label="亮燈首頁"><svg class="brand-mark" aria-hidden="true"><use href="#i-mark"/></svg><span class="brand-name">亮燈</span><span class="brand-sub">空屋活化顧問</span></a>
+    <a class="brand" href="#intro" aria-label="亮燈首頁"><span class="brand-win" aria-hidden="true"></span><span class="brand-name">亮燈</span><span class="brand-sub">空屋活化顧問</span></a>
     <nav class="mainnav" aria-label="主要選單">
       <a href="#intro" data-nav="intro">開場</a>
       <a href="#cases" data-nav="cases">案件總覽</a>
-      <button type="button" class="linklike" data-action="new-case">新拜訪</button>
+      <button type="button" class="nav-btn" data-action="new-case">新拜訪</button>
     </nav>
-    <button type="button" class="btn lamp small tour-btn" data-action="tour"><svg aria-hidden="true"><use href="#i-play"/></svg>一鍵導覽</button>
+    <button type="button" class="btn btn-lamp btn-sm tour-btn" data-action="tour"><svg aria-hidden="true"><use href="#i-play"/></svg>一鍵導覽</button>
   </div>
 </header>
 
-<p class="ai-off" id="aiOff" hidden></p>
-<p class="ai-off" id="storeWarn" hidden>這個瀏覽器目前不能保存資料（可能是無痕視窗或預覽畫面）：關閉頁面後，案件和照片都會不見。要留下的案件請先下載報告或備份。</p>
+<div class="notice" id="aiOff" role="status" hidden><span id="aiOffText"></span><button type="button" class="notice-x" id="aiOffClose">知道了</button></div>
+<p class="notice" id="storeWarn" hidden>這個瀏覽器目前不能保存資料（可能是無痕視窗或預覽畫面）：關閉頁面後，案件和照片都會不見。要留下的案件請先下載報告或備份。</p>
 
+<div id="main" tabindex="-1">
 <!-- ============ 開場 ============ -->
 <main class="view" data-view="intro" id="view-intro">
-  <section class="night hero" data-tour="hero">
-    <div class="hero-in">
-      <div class="hero-copy">
-        <p class="eyebrow on-night">給包租代管業者的房源開發工具</p>
-        <h1 class="display">每 10 戶，<br>就有&nbsp;1&nbsp;戶的燈沒有亮。</h1>
-        <p class="hero-sub">全國有 914,196 戶「低度使用住宅」，一個月用不到 60 度電。房子很多，卻一直進不了租屋市場。</p>
-        <div class="row">
-          <button type="button" class="btn lamp big" data-action="tour"><svg aria-hidden="true"><use href="#i-play"/></svg>一鍵導覽（約 2 分鐘）</button>
-          <a class="btn on-night big" href="#cases">直接開始使用</a>
+  <section class="hero" id="hero">
+    <div class="hero-stage" data-tour="hero">
+      <div class="sky" id="sky" aria-hidden="true"></div>
+      <div class="hero-top">
+        <div class="hero-copy">
+          <h1 class="hero-title">每 10 戶，<br>就有&nbsp;1&nbsp;戶的燈<wbr>沒有亮。</h1>
+          <p class="hero-sub">全國有&nbsp;914,196&nbsp;戶住宅，一個月用不到&nbsp;60&nbsp;度電。<br class="br-wide">亮燈幫包租代管業者，把這些空著的房子一戶一戶找回來。</p>
+          <div class="hero-actions">
+            <button type="button" class="btn btn-lamp btn-lg magnet" data-action="tour"><svg aria-hidden="true"><use href="#i-play"/></svg><span>一鍵導覽<span class="wide-only">（約 2 分鐘）</span></span></button>
+            <a class="btn btn-night btn-lg" href="#cases">直接開始使用</a>
+          </div>
+        </div>
+        <figure class="meter-card">
+          <div class="meter-body">
+            <span class="meter-num" id="heroMeter">0028</span><span class="meter-unit">度</span>
+          </div>
+          <figcaption>竹北這戶空屋，<wbr>上個月只用了&nbsp;28&nbsp;度電。<span>低於&nbsp;60&nbsp;度，<wbr>就是內政部統計的「低度使用住宅」。</span></figcaption>
+        </figure>
+      </div>
+      <div class="street" id="street"></div>
+      <div class="hero-foot">
+        <div class="hero-foot-in">
+          <p class="lit-count" aria-live="polite"><span class="lit-wins" id="litWins" aria-hidden="true"></span><span id="litCount">已點亮 0 / 10 戶</span></p>
+          <p class="scroll-hint"><svg aria-hidden="true"><use href="#i-down"/></svg>往下捲動，一戶一戶點亮</p>
+          <button type="button" class="linklike on-night" id="btnLightAll">一次點亮</button>
         </div>
       </div>
-      <figure class="facade-fig">
-        <div class="facade" id="facade" role="img" aria-label="一棟 100 戶的公寓，其中 10 戶的窗沒有亮燈"></div>
-        <figcaption><span class="dot-dark"></span>暗著的窗：低度使用住宅，約占全部住宅 9.8%<span class="lit-count" id="litCount"></span></figcaption>
-      </figure>
     </div>
   </section>
 
-  <section class="band" data-tour="stats">
-    <div class="band-in">
-      <h2 class="section-title">供給是整個產業的瓶頸</h2>
-      <div class="stats">
-        <div class="stat"><b class="num">37.5<small>萬戶</small></b><span>六都屋齡 50 年內、具包租代管潛力的低度利用住宅</span></div>
-        <div class="stat"><b class="num">22,522<small>宅</small></b><span>新竹縣低度使用住宅，一年增加 3,217 宅</span></div>
-        <div class="stat"><b class="num">2,254<small>家</small></b><span>租賃住宅服務業者，三年將近翻倍</span></div>
-        <div class="stat"><b class="num">3<small>成</small> <i>vs</i> 9<small>成</small></b><span>出租房交給業者管理的比例：台灣 vs 日本</span></div>
+  <section class="sec sec-night stats" data-tour="stats">
+    <div class="sec-in">
+      <h2 class="sec-title">業者不缺，缺的是房源</h2>
+      <div class="stat-grid">
+        <div class="stat stat-lead">
+          <p class="stat-num"><span data-meter="37.5">37.5</span><small>萬戶</small></p>
+          <p class="stat-text">六都屋齡 50 年內、有機會轉成社宅包租代管的低度利用住宅</p>
+        </div>
+        <div class="stat">
+          <p class="stat-num"><span data-meter="22,522">22,522</span><small>宅</small></p>
+          <p class="stat-text">新竹縣的低度使用住宅，一年增加 3,217 宅</p>
+        </div>
+        <div class="stat">
+          <p class="stat-num"><span data-meter="2,254">2,254</span><small>家</small></p>
+          <p class="stat-text">租賃住宅服務業者，三年將近翻倍</p>
+        </div>
+        <div class="stat">
+          <p class="stat-num"><span data-meter="3">3</span><small>成</small><i>對</i><span data-meter="9">9</span><small>成</small></p>
+          <p class="stat-text">出租房交給業者管理的比例：台灣對日本</p>
+        </div>
       </div>
       <p class="src">資料：內政部統計通報（113 年下半年）、內政部國土署（2026/01）、工商時報（2026/01）、經濟日報。</p>
     </div>
   </section>
 
-  <section class="band alt">
-    <div class="band-in split">
-      <div>
-        <h2 class="section-title">卡住屋主的，是一筆算不清楚的帳</h2>
+  <section class="sec sec-day problem">
+    <div class="sec-in split">
+      <div class="problem-copy">
+        <h2 class="sec-title">卡住屋主的，是一筆算不清楚的帳</h2>
         <p class="lede">交給社宅包租代管，租金是市價八折或九折，換來房屋稅、地價稅、所得稅的減免和政府補助。划不划算，要看屋主名下有幾戶、所得稅級距、房子在哪個縣市、整理要花多少錢。屋主算不出來，業務也很難當場算給他看，談判常停在「我再想想」。</p>
+        <blockquote class="voice">
+          <p>「房子空著也是空著，可是租給別人，又怕被弄壞、怕被查稅⋯⋯」</p>
+          <footer>拜訪現場最常聽到的一句話</footer>
+        </blockquote>
       </div>
-      <div class="quote-card">
-        <p>「房子空著也是空著，可是租給別人，又怕被弄壞、怕被查稅⋯⋯」</p>
-        <span>拜訪現場最常聽到的一句話</span>
-      </div>
+      <figure class="teaser">
+        <figcaption><span class="teaser-k">同一間竹北老公寓，十年後差了</span><b class="teaser-gap" id="teaserGap">159 萬</b></figcaption>
+        <div class="teaser-chart chart" id="teaserChart"></div>
+        <div class="legend teaser-legend"><span><i class="lk lk-social"></i>社宅包租</span><span><i class="lk lk-self"></i>自己出租</span><span><i class="lk lk-vacant"></i>繼續空著</span></div>
+        <p class="hint" id="teaserNote"></p>
+      </figure>
     </div>
   </section>
 
-  <section class="band" data-tour="steps">
-    <div class="band-in">
-      <h2 class="section-title">一次拜訪，五個步驟，當場算給屋主看</h2>
-      <ol class="flow">
-        <li><b>拍照診斷</b><span>AI 看照片標出壁癌、漏水、老舊設備，對應修繕項目與費用。</span></li>
-        <li><b>整理後樣貌</b><span>以原始照片為底，讓屋主看見自己的房子整理後的樣子。</span></li>
-        <li><b>謄本初篩</b><span>讀建物謄本，判斷能否加入社宅包租代管、要準備哪些文件。</span></li>
-        <li><b>三條路試算</b><span>空著、自己租、社宅包租代管，十年淨收入；數字全由規則引擎計算。</span></li>
-        <li><b>帶走報告</b><span>依屋主顧慮產生白話說明，一頁報告和 LINE 訊息轉給家人。</span></li>
-      </ol>
+  <section class="sec sec-day how" id="how">
+    <div class="sec-in how-grid">
+      <header class="how-head" data-tour="steps">
+        <h2 class="sec-title">一次拜訪，五個步驟，當場算給屋主看</h2>
+        <p class="lede">業務在屋主家裡用手機完成。AI 負責看照片、讀謄本、把數字說成白話；每一個金額都由規則引擎計算，並附上來源。</p>
+      </header>
+        <ol class="how-list" id="howList">
+          <li><button type="button" data-how="1"><span class="how-win" aria-hidden="true"></span><span class="how-txt"><b>拍照診斷</b><span>AI 標出壁癌、漏水和老舊設備，對應修繕項目與費用。</span></span></button></li>
+          <li><button type="button" data-how="2"><span class="how-win" aria-hidden="true"></span><span class="how-txt"><b>整理後樣貌</b><span>以原始照片為底，讓屋主看見自己的房子整理後的樣子。</span></span></button></li>
+          <li><button type="button" data-how="3"><span class="how-win" aria-hidden="true"></span><span class="how-txt"><b>謄本初篩</b><span>讀建物謄本，判斷能不能加入社宅包租代管、要準備哪些文件。</span></span></button></li>
+          <li><button type="button" data-how="4"><span class="how-win" aria-hidden="true"></span><span class="how-txt"><b>三條路試算</b><span>空著、自己租、社宅包租代管，十年各剩多少，數字全由規則計算。</span></span></button></li>
+          <li><button type="button" data-how="5"><span class="how-win" aria-hidden="true"></span><span class="how-txt"><b>帶走報告</b><span>依屋主顧慮寫成白話，一頁報告和訊息直接轉給家人。</span></span></button></li>
+        </ol>
+        <div class="how-screens">
+          <article class="how-screen" data-how="1">
+            <p class="how-cap"><b>1　拍照診斷</b>AI 標出壁癌、漏水和老舊設備，對應修繕項目與費用。</p>
+            <div class="phone">
+              <div class="mock-photo"><img id="mockPhoto" alt="示範插圖：客廳現況" width="800" height="600">
+                <span class="pin" style="left:33%;top:50%">壁癌・中</span><span class="pin" style="left:70%;top:24%">水漬</span><span class="pin" style="left:40%;top:84%">地磚裂痕</span>
+              </div>
+              <div class="mock-sum"><span>修繕估計</span><b id="mockReno">22.6 萬</b></div>
+              <ul class="mock-lines"><li><span>全室油漆</span><span>25 坪</span></li><li><span>漏水／壁癌處理</span><span>中</span></li><li><span>浴室整理</span><span>中</span></li></ul>
+            </div>
+          </article>
+          <article class="how-screen" data-how="2">
+            <p class="how-cap"><b>2　整理後樣貌</b>以原始照片為底，讓屋主看見自己的房子整理後的樣子。</p>
+            <div class="phone">
+              <div class="mock-compare"><img id="mockAfter" alt="示範插圖：整理後示意" width="800" height="600"><div class="mock-before"><img id="mockBefore" alt="示範插圖：整理前" width="800" height="600"></div><span class="mock-handle" aria-hidden="true"></span><span class="mock-tag l">整理前</span><span class="mock-tag r">整理後</span></div>
+              <p class="mock-note">左右拖曳，對照同一個角度的整理前後。</p>
+            </div>
+          </article>
+          <article class="how-screen" data-how="3">
+            <p class="how-cap"><b>3　謄本初篩</b>讀建物謄本，判斷能不能加入社宅包租代管、要準備哪些文件。</p>
+            <div class="phone">
+              <div class="mock-deed"><img id="mockDeed" alt="示範用建物謄本" width="800" height="900"></div>
+              <ul class="mock-checks" id="mockChecks"></ul>
+            </div>
+          </article>
+          <article class="how-screen" data-how="4">
+            <p class="how-cap"><b>4　三條路試算</b>空著、自己租、社宅包租代管，十年各剩多少，數字全由規則計算。</p>
+            <div class="phone">
+              <p class="mock-k">十年淨收入</p>
+              <div id="mockBars"></div>
+              <p class="mock-note">房屋稅、地價稅、所得稅與補助，依縣市規則計算，每條都附來源。</p>
+            </div>
+          </article>
+          <article class="how-screen" data-how="5">
+            <p class="how-cap"><b>5　帶走報告</b>依屋主顧慮寫成白話，一頁報告和訊息直接轉給家人。</p>
+            <div class="phone">
+              <p class="mock-k">傳給家人的訊息</p>
+              <p class="mock-msg" id="mockMsg"></p>
+            </div>
+          </article>
+        </div>
     </div>
   </section>
 
-  <section class="band alt">
-    <div class="band-in split">
-      <div>
-        <h2 class="section-title">屋主免費，成交才收費</h2>
+  <section class="sec sec-day model">
+    <div class="sec-in split">
+      <div class="model-copy">
+        <h2 class="sec-title">屋主免費，成交才收費</h2>
         <p class="lede">業者每簽下一戶社宅包租代管，可以向政府申請開發費或媒合費，之後每月另有包管費或代管費。亮燈只在簽約成功時，向業者收每戶 2,000 到 3,000 元的服務費。</p>
       </div>
-      <div class="money">
-        <div><span>業者簽一戶的開發／媒合費</span><b class="num">13,000–18,000<small>元</small></b><em>桃園市首次包租、代管為例</em></div>
-        <div><span>亮燈服務費</span><b class="num">2,500<small>元／戶</small></b><em>成交才收，訪談業者後定價</em></div>
-      </div>
+      <dl class="fees">
+        <div><dt>業者簽一戶的開發／媒合費</dt><dd><b>13,000–18,000</b>元</dd><p>桃園市首次包租、代管為例</p></div>
+        <div class="fee-lit"><dt>亮燈服務費</dt><dd><b>2,500</b>元／戶</dd><p>成交才收，訪談業者後定價</p></div>
+      </dl>
     </div>
   </section>
 
-  <section class="night cta-band">
-    <div class="band-in cta-in">
-      <h2 class="display small">讓空著的房子，重新亮燈。</h2>
-      <div class="row">
-        <button type="button" class="btn lamp big" data-action="new-case"><svg aria-hidden="true"><use href="#i-plus"/></svg>開始一次新拜訪</button>
-        <button type="button" class="btn on-night big" data-action="open-demo">看完整示範案例</button>
+  <section class="dawn">
+    <div class="dawn-in">
+      <h2 class="dawn-title">讓空著的房子，重新亮燈。</h2>
+      <div class="hero-actions">
+        <button type="button" class="btn btn-lamp btn-lg magnet" data-action="new-case"><svg aria-hidden="true"><use href="#i-plus"/></svg>開始一次新拜訪</button>
+        <button type="button" class="btn btn-night btn-lg" data-action="open-demo">看完整示範案例</button>
       </div>
     </div>
+    <div class="dawn-street" id="dawnStreet"></div>
   </section>
+  <footer class="site-foot">
+    <p>115 年新竹縣青春靚點子全國學生創業挑戰賽參賽原型。市場數字的來源列在上方，稅率與補助的來源列在拜訪流程第 4 步。</p>
+    <p>部分動效的概念參考 React Bits（MIT + Commons Clause），以原生程式重寫。</p>
+  </footer>
 </main>
 
 <!-- ============ 案件總覽 ============ -->
-<main class="view wrap" data-view="cases" id="view-cases" hidden>
-  <div class="page-head">
-    <div>
-      <p class="eyebrow">業者端</p>
+<main class="view view-app" data-view="cases" id="view-cases" hidden>
+  <div class="wrap page">
+    <header class="page-head">
       <h1 class="page-title">案件總覽</h1>
-    </div>
-    <div class="row">
-      <button type="button" class="btn primary" data-action="new-case"><svg aria-hidden="true"><use href="#i-plus"/></svg>新拜訪</button>
-      <button type="button" class="btn" id="btnExport">匯出 CSV</button>
-    </div>
-  </div>
-
-  <div class="kpis" id="kpis" data-tour="kpis"></div>
-
-  <div class="dash-grid">
-    <section class="card" data-tour="funnel">
-      <div class="card-head"><h2 class="card-title">拜訪到簽約</h2><span class="hint" id="funnelNote"></span></div>
-      <div id="funnel"></div>
-    </section>
-    <section class="card">
-      <div class="card-head"><h2 class="card-title">需要追蹤</h2></div>
-      <ul class="follow" id="followList"></ul>
-    </section>
-  </div>
-
-  <section class="card" data-tour="caselist">
-    <div class="card-head">
-      <h2 class="card-title">所有案件</h2>
       <div class="row">
-        <div class="seg small" role="radiogroup" aria-label="篩選狀態" id="statusFilter"></div>
-        <label class="check"><input type="checkbox" id="showDemo"> 顯示示範案件</label>
+        <button type="button" class="btn btn-primary" data-action="new-case"><svg aria-hidden="true"><use href="#i-plus"/></svg>新拜訪</button>
+        <button type="button" class="btn" id="btnExport">匯出 CSV</button>
       </div>
-    </div>
-    <div class="case-list" id="caseList"></div>
-    <p class="status-line" id="casesStatus" role="status" aria-live="polite"></p>
-  </section>
+    </header>
 
-  <details class="card settings">
-    <summary>收入假設</summary>
-    <div class="fields">
-      <label class="field"><span>包租：每戶開發費（元）</span><input id="feeLease" type="number" min="0" step="500" inputmode="numeric"></label>
-      <label class="field"><span>代管：每戶媒合費（元）</span><input id="feeManage" type="number" min="0" step="500" inputmode="numeric"></label>
-      <label class="field"><span>亮燈服務費（元／戶）</span><input id="feeService" type="number" min="0" step="100" inputmode="numeric"></label>
+    <section class="kpis" id="kpis" data-tour="kpis" aria-label="拜訪、報告、簽約與收入"></section>
+
+    <div class="dash-grid">
+      <section class="card" data-tour="funnel">
+        <div class="card-head"><h2 class="card-title">拜訪到簽約</h2><span class="hint" id="funnelNote"></span></div>
+        <div id="funnel"></div>
+      </section>
+      <section class="card">
+        <div class="card-head"><h2 class="card-title">需要追蹤</h2></div>
+        <ul class="follow" id="followList"></ul>
+      </section>
     </div>
-    <p class="hint">開發費、媒合費依各縣市當期社會住宅包租代管計畫而不同；預設值是桃園市首次媒合的業者分享數字（<a href="https://www.ptt.cc/bbs/home-sale/M.1745927963.A.E1B.html" target="_blank" rel="noopener">來源</a>）。亮燈服務費是提案書的初步測試價。</p>
-  </details>
-  <details class="card settings">
-    <summary>備份與還原</summary>
-    <p class="hint">案件和照片只存在這台裝置的瀏覽器裡。換手機或換電腦前，先按「備份全部案件」存成一個檔案，再到新裝置用「從備份還原」。備份檔含現場照片，請不要轉傳給無關的人。</p>
-    <div class="row">
-      <button type="button" class="btn" id="btnBackup">備份全部案件</button>
-      <label class="btn" for="restoreInput">從備份還原</label>
-      <input class="vh" id="restoreInput" type="file" accept=".json,application/json">
-    </div>
-    <p class="status-line" id="backupStatus" role="status" aria-live="polite"></p>
-  </details>
-  <p class="hint local-note">案件與照片只存在這台裝置的瀏覽器裡；換手機或清除網站資料會不見，請定期備份。</p>
+
+    <section class="card" data-tour="caselist">
+      <div class="card-head">
+        <h2 class="card-title">所有案件</h2>
+        <div class="row list-tools">
+          <div class="seg seg-sm" role="radiogroup" aria-label="篩選狀態" id="statusFilter"></div>
+          <label class="check"><input type="checkbox" id="showDemo"> 顯示示範案件</label>
+        </div>
+      </div>
+      <div class="case-list" id="caseList"></div>
+      <p class="status-line" id="casesStatus" role="status" aria-live="polite"></p>
+    </section>
+
+    <details class="card settings">
+      <summary>收入假設</summary>
+      <div class="fields">
+        <label class="field"><span>包租：每戶開發費（元）</span><input id="feeLease" type="number" min="0" step="500" inputmode="numeric"></label>
+        <label class="field"><span>代管：每戶媒合費（元）</span><input id="feeManage" type="number" min="0" step="500" inputmode="numeric"></label>
+        <label class="field"><span>亮燈服務費（元／戶）</span><input id="feeService" type="number" min="0" step="100" inputmode="numeric"></label>
+      </div>
+      <p class="hint">開發費、媒合費依各縣市當期社會住宅包租代管計畫而不同；預設值是桃園市首次媒合的業者分享數字（<a href="https://www.ptt.cc/bbs/home-sale/M.1745927963.A.E1B.html" target="_blank" rel="noopener">來源</a>）。亮燈服務費是提案書的初步測試價。</p>
+    </details>
+    <details class="card settings">
+      <summary>備份與還原</summary>
+      <p class="hint">案件和照片只存在這台裝置的瀏覽器裡。換手機或換電腦前，先按「備份全部案件」存成一個檔案，再到新裝置用「從備份還原」。備份檔含現場照片，請不要轉傳給無關的人。</p>
+      <div class="row">
+        <button type="button" class="btn" id="btnBackup">備份全部案件</button>
+        <label class="btn" for="restoreInput">從備份還原</label>
+        <input class="vh" id="restoreInput" type="file" accept=".json,application/json">
+      </div>
+      <p class="status-line" id="backupStatus" role="status" aria-live="polite"></p>
+    </details>
+    <p class="hint local-note">案件與照片只存在這台裝置的瀏覽器裡；換手機或清除網站資料會不見，請定期備份。</p>
+  </div>
 </main>
 
 <!-- ============ 拜訪流程 ============ -->
-<main class="view" data-view="visit" id="view-visit" hidden>
+<main class="view view-app" data-view="visit" id="view-visit" hidden>
   <div class="visit-head">
     <div class="wrap visit-head-in">
       <a class="back" href="#cases" aria-label="回案件總覽"><svg aria-hidden="true"><use href="#i-back"/></svg><span class="back-text">案件總覽</span></a>
-      <div class="case-title">
-        <strong id="caseTitle">新案件</strong>
-        <span class="pill demo" id="demoChip" hidden>示範案例</span>
+      <div class="case-id">
+        <strong class="plate" id="caseTitle">新案件</strong>
+        <span class="case-ping" id="casePing"></span>
+        <span class="pill pill-demo" id="demoChip" hidden>示範</span>
       </div>
       <label class="status-select"><span class="vh">案件狀態</span><select id="caseStatus"></select></label>
     </div>
@@ -210,17 +294,17 @@
       <div class="visit-main">
         <!-- 步驟 1 -->
         <section class="panel" data-panel="1">
-          <header class="panel-head"><p class="eyebrow">步驟 1</p><h2 class="panel-title">屋況診斷與修繕清單</h2>
+          <header class="panel-head"><p class="step-no">步驟 1／5</p><h2 class="panel-title">屋況診斷與修繕清單</h2>
             <p class="lede">拍下每個空間，AI 標出壁癌、水漬和老舊設備，對應到修繕項目。金額由估價表計算，AI 只負責看照片。</p></header>
 
           <div class="card">
             <h3 class="card-title">房屋基本資料</h3>
             <div class="fields">
               <label class="field"><span>縣市</span><select id="fCity"><option value="hsinchu">新竹縣</option><option value="taipei">台北市</option></select></label>
-              <label class="field wide"><span>地址或社區</span><input id="fAddr" type="text" autocomplete="off" placeholder="例如：竹北市○○路"></label>
+              <label class="field wide"><span>地址或社區</span><input id="fAddr" type="text" autocomplete="off" placeholder="例如：竹北市○○路…"></label>
               <label class="field"><span>室內坪數（主建物）</span><input id="fPing" type="number" min="1" step="0.1" inputmode="decimal"></label>
               <label class="field"><span>屋齡（年）</span><input id="fAge" type="number" min="0" step="1" inputmode="numeric"></label>
-              <div class="field"><span>格局</span><div class="triple"><input id="fRooms" type="number" min="0" aria-label="房">房<input id="fHalls" type="number" min="0" aria-label="廳">廳<input id="fBaths" type="number" min="0" aria-label="衛">衛</div></div>
+              <div class="field"><span>格局</span><div class="triple"><input id="fRooms" type="number" min="0" inputmode="numeric" aria-label="房">房<input id="fHalls" type="number" min="0" inputmode="numeric" aria-label="廳">廳<input id="fBaths" type="number" min="0" inputmode="numeric" aria-label="衛">衛</div></div>
               <label class="field"><span>近一年月均用電（度）</span><input id="fKwh" type="number" min="0" step="1" inputmode="numeric"></label>
             </div>
             <p class="hint" id="kwhNote"></p>
@@ -232,8 +316,8 @@
             <div class="row">
               <label class="btn" for="photoInput"><svg aria-hidden="true"><use href="#i-plus"/></svg>加入照片</label>
               <input class="vh" id="photoInput" type="file" accept="image/*" multiple>
-              <button class="btn primary" id="btnDiag" type="button">AI 診斷照片</button>
-              <button class="btn ghost" id="btnDiagStop" type="button" hidden>停止</button>
+              <button class="btn btn-primary" id="btnDiag" type="button">AI 診斷照片</button>
+              <button class="btn btn-ghost" id="btnDiagStop" type="button" hidden>停止</button>
             </div>
             <p class="status-line" id="diagStatus" role="status" aria-live="polite"></p>
           </div>
@@ -250,16 +334,16 @@
             <details>
               <summary>加入其他項目</summary>
               <div class="quick" id="quickAdd">
-                <button class="btn small" type="button" data-add="electrical">配電盤升級</button>
-                <button class="btn small" type="button" data-add="leak_check">儀器抓漏檢測</button>
-                <button class="btn small" type="button" data-add="aircon">冷氣新裝</button>
-                <button class="btn small" type="button" data-add="window">鋁窗更換</button>
-                <button class="btn small" type="button" data-add="water_heater">熱水器更換</button>
+                <button class="btn btn-sm" type="button" data-add="electrical">配電盤升級</button>
+                <button class="btn btn-sm" type="button" data-add="leak_check">儀器抓漏檢測</button>
+                <button class="btn btn-sm" type="button" data-add="aircon">冷氣新裝</button>
+                <button class="btn btn-sm" type="button" data-add="window">鋁窗更換</button>
+                <button class="btn btn-sm" type="button" data-add="water_heater">熱水器更換</button>
               </div>
               <form class="custom" id="customForm">
-                <input id="customName" type="text" placeholder="項目名稱，例如：工班報價－廚房矽利康" aria-label="自訂項目名稱">
-                <input id="customAmt" type="number" min="0" step="100" placeholder="金額（元）" aria-label="自訂項目金額">
-                <button class="btn small" type="submit">加入</button>
+                <input id="customName" type="text" placeholder="項目名稱，例如：工班報價－廚房矽利康…" aria-label="自訂項目名稱">
+                <input id="customAmt" type="number" min="0" step="100" inputmode="numeric" placeholder="金額（元）" aria-label="自訂項目金額">
+                <button class="btn btn-sm" type="submit">加入</button>
               </form>
             </details>
             <details>
@@ -268,12 +352,12 @@
               <p class="hint">以 PRO360 達人網 2024–2026 年公開報價統計為基準；分級組合與部分換算為原型假設，已在表中標明。正式版改用合作工班報價單，並以實際施工金額校正。</p>
             </details>
           </div>
-          <div class="nav"><span></span><button class="btn lamp" type="button" data-go="2">下一步：整理後樣貌</button></div>
+          <div class="nav"><span></span><button class="btn btn-lamp" type="button" data-go="2">下一步：整理後樣貌</button></div>
         </section>
 
         <!-- 步驟 2 -->
         <section class="panel" data-panel="2" hidden>
-          <header class="panel-head"><p class="eyebrow">步驟 2</p><h2 class="panel-title">整理後的樣子</h2>
+          <header class="panel-head"><p class="step-no">步驟 2／5</p><h2 class="panel-title">整理後的樣子</h2>
             <p class="lede">屋主看到的是自己的房子，比樣品屋照片更有說服力。這一版由 AI 寫好改圖指令，貼到影像生成工具產生圖片後上傳；正式版會在後台直接產生。</p></header>
           <div class="card" data-tour="compare">
             <div class="card-head"><h3 class="card-title">整理前後對照</h3><span class="hint">左右拖曳中間的線</span></div>
@@ -283,16 +367,16 @@
             <h3 class="card-title">選一張原圖</h3>
             <div class="choose" id="chooseList"></div>
             <div class="row">
-              <label class="btn small" for="beforeInput">另外上傳一張</label>
+              <label class="btn btn-sm" for="beforeInput">另外上傳一張</label>
               <input class="vh" id="beforeInput" type="file" accept="image/*">
-              <button class="btn primary" id="btnPrompt" type="button">AI 寫改圖指令</button>
-              <button class="btn ghost" id="btnPromptStop" type="button" hidden>停止</button>
+              <button class="btn btn-primary" id="btnPrompt" type="button">AI 寫改圖指令</button>
+              <button class="btn btn-ghost" id="btnPromptStop" type="button" hidden>停止</button>
             </div>
             <p class="status-line" id="promptStatus" role="status" aria-live="polite"></p>
             <div class="prompt-box" id="promptBox" hidden>
               <p class="hint" id="promptZh"></p>
               <pre id="promptEn"></pre>
-              <div class="row"><button class="btn small" id="btnCopyPrompt" type="button">複製英文指令</button></div>
+              <div class="row"><button class="btn btn-sm" id="btnCopyPrompt" type="button">複製英文指令</button></div>
             </div>
             <ol class="mini-steps">
               <li>開啟影像生成工具（例如 Gemini 或 ChatGPT），上傳同一張原圖。</li>
@@ -304,12 +388,12 @@
               <input class="vh" id="afterInput" type="file" accept="image/*">
             </div>
           </div>
-          <div class="nav"><button class="btn ghost" type="button" data-go="1">上一步</button><button class="btn lamp" type="button" data-go="3">下一步：資格初篩</button></div>
+          <div class="nav"><button class="btn btn-ghost" type="button" data-go="1">上一步</button><button class="btn btn-lamp" type="button" data-go="3">下一步：資格初篩</button></div>
         </section>
 
         <!-- 步驟 3 -->
         <section class="panel" data-panel="3" hidden>
-          <header class="panel-head"><p class="eyebrow">步驟 3</p><h2 class="panel-title">謄本判讀與資格初篩</h2>
+          <header class="panel-head"><p class="step-no">步驟 3／5</p><h2 class="panel-title">謄本判讀與資格初篩</h2>
             <p class="lede">拍下建物謄本，AI 讀出主要用途、建築完成日期和所有權人數，初步判斷能不能加入社宅包租代管。最後以業者與主管機關審查為準。</p></header>
           <div class="deed-grid">
             <div class="card">
@@ -318,8 +402,8 @@
               <div class="row">
                 <label class="btn" for="deedInput">上傳謄本照片</label>
                 <input class="vh" id="deedInput" type="file" accept="image/*">
-                <button class="btn primary" id="btnDeed" type="button">AI 判讀謄本</button>
-                <button class="btn ghost" id="btnDeedStop" type="button" hidden>停止</button>
+                <button class="btn btn-primary" id="btnDeed" type="button">AI 判讀謄本</button>
+                <button class="btn btn-ghost" id="btnDeedStop" type="button" hidden>停止</button>
               </div>
               <p class="status-line" id="deedStatus" role="status" aria-live="polite"></p>
               <p class="hint">請先遮住所有權人姓名與統一編號。AI 只回傳下表欄位，不輸出姓名與身分證字號。</p>
@@ -329,15 +413,15 @@
               <div id="deedResult"></div>
             </div>
           </div>
-          <div class="nav"><button class="btn ghost" type="button" data-go="2">上一步</button><button class="btn lamp" type="button" data-go="4">下一步：三條路試算</button></div>
+          <div class="nav"><button class="btn btn-ghost" type="button" data-go="2">上一步</button><button class="btn btn-lamp" type="button" data-go="4">下一步：三條路試算</button></div>
         </section>
 
         <!-- 步驟 4 -->
         <section class="panel" data-panel="4" hidden>
-          <header class="panel-head"><p class="eyebrow">步驟 4</p><h2 class="panel-title">三條路，十年算給屋主看</h2>
+          <header class="panel-head"><p class="step-no">步驟 4／5</p><h2 class="panel-title">三條路，十年算給屋主看</h2>
             <p class="lede">同一間房子，繼續空著、自己出租、交給社宅包租代管，十年各剩多少錢。稅率依縣市規則計算，每條規則都附來源；這一步沒有用到 AI。</p></header>
 
-          <div class="card result-card" data-tour="paths">
+          <div class="result" data-tour="paths">
             <p class="conclusion" id="conclusion"></p>
             <div class="paths" id="paths"></div>
           </div>
@@ -369,9 +453,9 @@
               <details>
                 <summary>其他假設</summary>
                 <div class="fields">
-                  <label class="field"><span>每年空租月數</span><input id="cVac" type="number" min="0" max="11" step="0.5"><small class="hint">自己出租、代管</small></label>
-                  <label class="field"><span>找房客費用（月租的倍數／年）</span><input id="cAgent" type="number" min="0" max="3" step="0.05"><small class="hint">預設 0.25：兩年換約、仲介費半個月</small></label>
-                  <label class="field"><span>每年維修費（元）</span><input id="cMaint" type="number" min="0" step="1000"></label>
+                  <label class="field"><span>每年空租月數</span><input id="cVac" type="number" min="0" max="11" step="0.5" inputmode="decimal"><small class="hint">自己出租、代管</small></label>
+                  <label class="field"><span>找房客費用（月租的倍數／年）</span><input id="cAgent" type="number" min="0" max="3" step="0.05" inputmode="decimal"><small class="hint">預設 0.25：兩年換約、仲介費半個月</small></label>
+                  <label class="field"><span>每年維修費（元）</span><input id="cMaint" type="number" min="0" step="1000" inputmode="numeric"></label>
                 </div>
               </details>
             </div>
@@ -388,20 +472,20 @@
             <h3 class="card-title">這個案件用到的規則</h3>
             <ul class="rules" id="rulesList"></ul>
           </div>
-          <div class="nav"><button class="btn ghost" type="button" data-go="3">上一步</button><button class="btn lamp" type="button" data-go="5">下一步：報告</button></div>
+          <div class="nav"><button class="btn btn-ghost" type="button" data-go="3">上一步</button><button class="btn btn-lamp" type="button" data-go="5">下一步：報告</button></div>
         </section>
 
         <!-- 步驟 5 -->
         <section class="panel" data-panel="5" hidden>
-          <header class="panel-head"><p class="eyebrow">步驟 5</p><h2 class="panel-title">給屋主帶走的報告</h2>
+          <header class="panel-head"><p class="step-no">步驟 5／5</p><h2 class="panel-title">給屋主帶走的報告</h2>
             <p class="lede">先把屋主在意的事說清楚，再把整份結果交給他和家人討論。</p></header>
           <div class="card">
             <h3 class="card-title">屋主的顧慮</h3>
             <div class="chips" id="concernChips"></div>
-            <label class="field"><span>其他顧慮（選填）</span><textarea id="concernText" rows="2" placeholder="例如：兩年後孫子可能要回竹北念書"></textarea></label>
+            <label class="field"><span>其他顧慮（選填）</span><textarea id="concernText" rows="2" placeholder="例如：兩年後孫子可能要回竹北念書…"></textarea></label>
             <div class="row">
-              <button class="btn primary" id="btnExplain" type="button">AI 白話說明</button>
-              <button class="btn ghost" id="btnExplainStop" type="button" hidden>停止</button>
+              <button class="btn btn-primary" id="btnExplain" type="button">AI 白話說明</button>
+              <button class="btn btn-ghost" id="btnExplainStop" type="button" hidden>停止</button>
             </div>
             <p class="status-line" id="explainStatus" role="status" aria-live="polite"></p>
             <p class="explain-out" id="explainOut"></p>
@@ -410,7 +494,7 @@
           <div class="card" data-tour="report">
             <div class="card-head"><h3 class="card-title">一頁報告</h3>
               <div class="row">
-                <button class="btn lamp" id="btnDownload" type="button">下載報告</button>
+                <button class="btn btn-lamp" id="btnDownload" type="button">下載報告</button>
                 <button class="btn" id="btnLine" type="button">複製 LINE 訊息</button>
               </div>
             </div>
@@ -422,28 +506,29 @@
             <h3 class="card-title">屋主決定了嗎？</h3>
             <div class="decide-row" id="decideRow">
               <button type="button" class="btn" data-status="thinking">還在考慮</button>
-              <button type="button" class="btn go" data-status="signed">簽約了</button>
+              <button type="button" class="btn btn-go" data-status="signed">簽約了</button>
               <button type="button" class="btn" data-status="lost">這次不簽</button>
             </div>
             <p class="status-line" id="decideStatus" role="status" aria-live="polite"></p>
             <div class="fields">
               <label class="field"><span>下次追蹤日期</span><input id="followUp" type="date"></label>
-              <label class="field wide"><span>備註</span><input id="caseNote" type="text" placeholder="例如：屋主想先和兄弟姊妹討論"></label>
+              <label class="field wide"><span>備註</span><input id="caseNote" type="text" placeholder="例如：屋主想先和兄弟姊妹討論…"></label>
             </div>
             <p class="hint">狀態會計入案件總覽的轉換率。</p>
           </div>
-          <div class="nav"><button class="btn ghost" type="button" data-go="4">上一步</button><a class="btn" href="#cases">回案件總覽</a></div>
+          <div class="nav"><button class="btn btn-ghost" type="button" data-go="4">上一步</button><a class="btn" href="#cases">回案件總覽</a></div>
         </section>
       </div>
 
       <aside class="summary" aria-label="案件摘要">
-        <div class="sum-block"><span class="eyebrow">整理費用估計</span><div class="sum-big num" id="sumReno"></div><div class="hint" id="sumRenoRange"></div></div>
-        <div class="sum-block"><span class="eyebrow">十年淨收入</span><div id="sumBars"></div></div>
+        <div class="sum-block"><span class="sum-k">整理費用估計</span><div class="sum-big" id="sumReno"></div><div class="hint" id="sumRenoRange"></div></div>
+        <div class="sum-block"><span class="sum-k">十年淨收入</span><div id="sumBars"></div></div>
         <p class="hint" id="sumNote"></p>
       </aside>
     </div>
   </div>
 </main>
+</div>
 
 <nav class="tabbar" aria-label="快速切換">
   <a href="#intro" data-nav="intro"><svg aria-hidden="true"><use href="#i-home"/></svg>開場</a>
@@ -451,6 +536,8 @@
   <button type="button" data-action="new-case"><svg aria-hidden="true"><use href="#i-plus"/></svg>新拜訪</button>
   <button type="button" data-action="tour"><svg aria-hidden="true"><use href="#i-play"/></svg>導覽</button>
 </nav>
+
+<div class="toasts" id="toast" role="status" aria-live="polite"></div>
 
 <!-- 導覽 -->
 <div class="tour" id="tour" hidden>
@@ -461,9 +548,9 @@
     <p id="tourText"></p>
     <div class="tour-bar"><span id="tourBar"></span></div>
     <div class="tour-nav">
-      <button type="button" class="btn ghost small" id="tourPrev">上一步</button>
-      <label class="check small"><input type="checkbox" id="tourAuto"> 自動播放</label>
-      <button type="button" class="btn lamp small" id="tourNext">下一步</button>
+      <button type="button" class="btn btn-ghost btn-sm" id="tourPrev">上一步</button>
+      <label class="check check-sm"><input type="checkbox" id="tourAuto"> 自動播放</label>
+      <button type="button" class="btn btn-lamp btn-sm" id="tourNext">下一步</button>
     </div>
   </div>
 </div>
@@ -480,6 +567,8 @@
 <script src="js/store.js"></script>
 <script src="js/demo.js"></script>
 <script src="js/platform.js"></script>
+<script src="js/motion.js"></script>
+<script src="js/intro.js"></script>
 <script src="js/tour.js"></script>
 <script src="js/app.js"></script>
 <!-- /build:body -->

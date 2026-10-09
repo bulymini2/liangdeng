@@ -14,7 +14,7 @@ html = html.replace(/<link rel="stylesheet" href="(css\/[^"]+)">/g, (_, p) => `<
 // <script src="js/xxx.js"></script> → <script>；內容裡的 </script 要跳脫
 html = html.replace(/<script src="(js\/[^"]+)"><\/script>/g, (_, p) => `<script>\n${read(p).replace(/<\/script/gi, '<\\/script')}</script>`);
 
-const left = html.match(/<(link|script) [^>]*(href|src)="(?!https:)[^"]+"/);
+const left = html.match(/<(link|script) [^>]*(href|src)="(?!https:|data:)[^"]+"/);
 if (left) throw new Error('還有沒內嵌的本地檔案：' + left[0]);
 
 const pick = name => {

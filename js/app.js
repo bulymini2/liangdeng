@@ -101,10 +101,17 @@
   const calcReady = (c = C) => c.calc.rent > 0 && c.calc.houseValue > 0;
   const name = k => pathName(k, C.calc.mode);
   const cityName = (c = C) => RULES[c.case.city].name;
-  function caseTitle(c = C) {
+  /** 案件名稱（放在門牌上）：地址，沒有地址就用縣市 */
+  function caseName(c = C) {
     const addr = (c.case.addr || '').replace(/（示範）/, '').trim();
-    if (!addr && !c.case.ping) return '新案件';
-    return (addr || cityName(c)) + (c.case.ping ? ` · ${c.case.ping} 坪` : '');
+    return addr || (c.case.ping ? cityName(c) + '的房子' : '新案件');
+  }
+  const pingText = (c = C) => c.case.ping ? `${c.case.ping} 坪` : '';
+  /** 文字用的完整名稱（LINE 訊息、CSV、AI 說明）：地址加坪數 */
+  function caseTitle(c = C) { const n = caseName(c), pt = pingText(c); return pt && n !== '新案件' ? `${n} ${pt}` : n; }
+  /** 這個案件五個步驟各自完成了沒（依資料判斷，給案件列表的五扇窗用） */
+  function doneSteps(c) {
+    return [(c.repairs || []).some(l => l.on), !!(c.after.afterId && c.after.photoId), !!c.deedFields, calcReady(c), !!c.explanation || c.status !== 'visit'];
   }
   function view() {
     return {
@@ -166,15 +173,17 @@
       showView(r.view);
       if (r.view === 'cases') renderCases();
       if (r.view === 'intro') {
-        renderFacade();
+        LD.intro.enter();
         if (!prefs.seenIntro) { prefs.seenIntro = true; store.savePrefs(prefs); }
       }
       window.scrollTo(0, 0);
     }
   }
   function showView(v) {
+    const changed = currentView !== v;
     currentView = v;
     $$('main[data-view]').forEach(el => { el.hidden = el.dataset.view !== v; });
+    if (changed && v !== 'intro') LD.motion.replay($(`main[data-view="${v}"]`), 'enter');
     $$('[data-nav]').forEach(a => { if (a.dataset.nav === v) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
     updateAIState();
     renderStoreWarn();
@@ -185,29 +194,6 @@
     c.updatedAt = stamp();
     userCases.unshift(c);
     openCase(c.id, 1);
-  }
-
-  /* ================= 開場：亮燈的立面 ================= */
-  let facadeRun = 0;
-  function renderFacade() {
-    const run = ++facadeRun;
-    const box = $('#facade'), lit = $('#litCount');
-    const dark = [3, 14, 27, 31, 46, 52, 58, 69, 75, 88];
-    let html = '';
-    for (let i = 0; i < 100; i++) html += `<span class="w${dark.includes(i) ? ' dark' : (i * 7919) % 13 < 2 ? ' alt' : ''}" data-i="${i}"></span>`;
-    box.innerHTML = html + '<span class="door"></span>';
-    lit.textContent = '';
-    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    let k = 0;
-    const step = () => {
-      if (run !== facadeRun || currentView !== 'intro' || k >= dark.length) return;
-      const w = box.querySelector(`[data-i="${dark[k]}"]`);
-      if (w) { w.classList.remove('dark'); w.classList.add('on'); }
-      k++;
-      lit.textContent = k < dark.length ? `・已點亮 ${k} 戶` : '・10 戶全部亮燈';
-      setTimeout(step, 420);
-    };
-    setTimeout(step, 2600);
   }
 
   /* ================= 案件總覽 ================= */
@@ -221,7 +207,7 @@
     return `
       <div class="kpi"><span>拜訪</span><b class="num">${s.visits}<small>戶</small></b><em>進行中 ${s.openCases} 戶</em></div>
       <div class="kpi"><span>已出報告</span><b class="num">${s.reported}<small>戶</small></b><em>出報告率 ${Math.round(s.reportRate * 100)}%</em></div>
-      <div class="kpi"><span>已簽約</span><b class="num">${s.signed}<small>戶</small></b><em>簽約率 ${Math.round(s.signRate * 100)}%・已決定的 ${s.decided} 戶成交 ${Math.round(s.closeRate * 100)}%</em></div>
+      <div class="kpi"><span>已簽約</span><b class="num">${s.signed}<small>戶</small></b><em>簽約率\u00a0${Math.round(s.signRate * 100)}%，已決定的\u00a0${s.decided}\u00a0戶成交\u00a0${Math.round(s.closeRate * 100)}%</em></div>
       <div class="kpi lit"><span>預估開發費收入</span><b class="num">${fmt(s.devIncome)}<small>元</small></b><em>亮燈服務費 ${fmt(s.serviceIncome)} 元</em></div>`;
   }
   function renderCases() {
@@ -234,7 +220,7 @@
 
     const fu = P.followUps(list, isoDate());
     $('#followList').innerHTML = fu.length
-      ? fu.map(({ c, overdue }) => `<li><span class="date-chip${overdue ? ' over' : ''}">${md(c.followUp)}${overdue ? ' 已過' : ''}</span><span><a href="#visit/${esc(c.id)}/5" data-open="${esc(c.id)}" data-step="5">${esc(caseTitle(c))}</a> ${statusPill(c.status)}</span></li>`).join('')
+      ? fu.map(({ c, overdue }) => `<li><span class="date-chip${overdue ? ' over' : ''}">${md(c.followUp)}${overdue ? ' 已過' : ''}</span><span><a href="#visit/${esc(c.id)}/5" data-open="${esc(c.id)}" data-step="5">${esc(caseName(c))}</a> ${statusPill(c.status)}</span></li>`).join('')
       : '<li class="hint">目前沒有要追蹤的案件。在報告頁設定「下次追蹤日期」就會出現在這裡。</li>';
 
     $('#statusFilter').innerHTML = [{ key: 'all', label: '全部' }].concat(STATUSES).map(o => `<button type="button" role="radio" data-filter="${o.key}" aria-checked="${listFilter === o.key}">${o.label}</button>`).join('');
@@ -242,21 +228,22 @@
 
     const rows = list.filter(c => listFilter === 'all' || c.status === listFilter);
     $('#caseList').innerHTML = rows.length ? rows.map(c => {
-      const b = caseBest(c), id = esc(c.id);
+      const b = caseBest(c), id = esc(c.id), done = doneSteps(c);
       const meta = [cityName(c), c.case.ping ? c.case.ping + ' 坪' : '', c.case.age ? '屋齡 ' + c.case.age + ' 年' : '', '建立 ' + md(c.createdAt)].filter(Boolean);
       return `<div class="case-row" data-open="${id}">
+        <span class="case-wins" role="img" aria-label="五個步驟完成 ${done.filter(Boolean).length} 個">${done.map(d => `<i${d ? ' class="on"' : ''}></i>`).join('')}</span>
         <div class="case-main">
-          <div class="case-name"><a href="#visit/${id}/${c.step || 1}" data-open="${id}">${esc(caseTitle(c))}</a>${statusPill(c.status)}${c.demo ? '<span class="pill demo">示範</span>' : ''}</div>
+          <div class="case-name"><a href="#visit/${id}/${c.step || 1}" data-open="${id}">${esc(caseName(c))}</a>${statusPill(c.status)}${c.demo ? '<span class="pill pill-demo">示範</span>' : ''}</div>
           <div class="case-meta">${meta.map(m => `<span>${esc(m)}</span>`).join('')}${c.note ? `<span>${esc(c.note)}</span>` : ''}</div>
         </div>
         <div class="case-best">${b ? `<span>十年最佳：${esc(b.name)}</span><b class="num">${wan(b.total)}</b>` : '<span>尚未試算</span>'}</div>
         <div class="case-actions">
           <label><span class="vh">狀態</span><select data-status-of="${id}">${STATUSES.map(st => `<option value="${st.key}"${st.key === c.status ? ' selected' : ''}>${st.label}</option>`).join('')}</select></label>
           ${c.followUp ? `<span class="date-chip">追蹤 ${md(c.followUp)}</span>` : ''}
-          ${c.demo ? '' : `<button type="button" class="btn ghost small" data-del="${id}">刪除</button>`}
+          ${c.demo ? '' : `<button type="button" class="btn btn-ghost btn-sm" data-del="${id}">刪除</button>`}
         </div>
       </div>`;
-    }).join('') : `<div class="empty"><span>${listFilter === 'all' ? '還沒有案件。拜訪屋主時按「新拜訪」，做完五個步驟就會出現在這裡。' : '這個狀態目前沒有案件。'}</span>${listFilter === 'all' ? '<button type="button" class="btn primary" data-action="new-case">新拜訪</button>' : ''}</div>`;
+    }).join('') : `<div class="empty"><span>${listFilter === 'all' ? '還沒有案件。拜訪屋主時按「新拜訪」，做完五個步驟就會出現在這裡。' : '這個狀態目前沒有案件。'}</span>${listFilter === 'all' ? '<button type="button" class="btn btn-primary" data-action="new-case">新拜訪</button>' : ''}</div>`;
 
     const f = fees();
     $('#feeLease').value = f.devFee['包租']; $('#feeManage').value = f.devFee['代管']; $('#feeService').value = f.serviceFee;
@@ -329,7 +316,7 @@
   }
 
   /* ================= AI 狀態 ================= */
-  const AI = { checked: false, blocked: false };
+  const AI = { checked: false, blocked: false, noticeClosed: false };
   const running = {};
   const HIDE_CODES = ['not_granted', 'sampling_disabled', 'not_declared', 'capability_disabled', 'capability_removed'];
   function aiError(e) {
@@ -354,10 +341,10 @@
   function updateAIState() {
     const textOK = aiText(), imgOK = textOK && platform.ai.images;
     const off = $('#aiOff');
-    off.hidden = textOK || !AI.checked || currentView !== 'visit';
-    off.textContent = platform.kind === 'claude'
+    off.hidden = textOK || !AI.checked || currentView !== 'visit' || AI.noticeClosed;
+    $('#aiOffText').textContent = platform.kind === 'claude'
       ? 'AI 功能目前無法使用（可能沒有取得 Claude 權限）。示範內容、三條路試算和報告不受影響。'
-      : '這個版本在一般瀏覽器開啟：AI 功能要在 Claude 線上原型裡才能用。示範內容、三條路試算、案件總覽和報告都可以操作。';
+      : '在一般瀏覽器開啟時沒有 AI 功能（要在 Claude 線上原型裡使用）；試算、案件總覽和報告都能照常操作。';
     if (!C) return;
     $('#btnDiag').disabled = !imgOK || !C.photos.some(p => BL[p.id]) || !!running.diag;
     $('#btnPrompt').disabled = !imgOK || !currentBefore() || !!running.prompt;
@@ -410,12 +397,13 @@
     $('#followUp').value = C.followUp || ''; $('#caseNote').value = C.note || '';
   }
   function renderCaseHead() {
-    $('#caseTitle').textContent = caseTitle();
+    $('#caseTitle').textContent = caseName();
+    $('#casePing').textContent = pingText();
     $('#demoChip').hidden = !C.demo;
     $('#demoBanner').hidden = !C.demo;
-    $('#demoText').textContent = C.id === LD.demo.DEMO_ID
+    $('#demoText').textContent = LD.util.glue(C.id === LD.demo.DEMO_ID
       ? '示範案例：竹北 25 坪、屋齡 32 年的繼承老公寓。照片是示意插圖，金額為示範值；在這裡的修改不會保存。'
-      : '示範案件：只有基本資料和試算條件，金額為示範值；在這裡的修改不會保存。';
+      : '示範案件：只有基本資料和試算條件，金額為示範值；在這裡的修改不會保存。');
     $('#caseStatus').innerHTML = STATUSES.map(s => `<option value="${s.key}"${s.key === C.status ? ' selected' : ''}>${s.label}</option>`).join('');
     const k = Number(C.case.kwh), note = $('#kwhNote');
     if (C.case.kwh !== '' && Number.isFinite(k)) {
@@ -437,7 +425,7 @@
         <div class="ph-meta">
           <span class="ph-idx">${i + 1}</span>
           <select id="room-${id}" data-room="${id}" aria-label="第 ${i + 1} 張的空間">${ROOMS.map(r => `<option${r === p.room ? ' selected' : ''}>${r}</option>`).join('')}</select>
-          <button class="btn small ghost" type="button" data-del="${id}" aria-label="移除第 ${i + 1} 張">移除</button>
+          <button class="btn btn-sm btn-ghost" type="button" data-del="${id}" aria-label="移除第 ${i + 1} 張">移除</button>
         </div>
       </div>`;
       }).join('');
@@ -474,7 +462,7 @@
         else if (it.tiers) ctrl = `<select id="tier-${key}" data-tier="${key}" aria-label="整理程度">${['輕', '中', '重'].map(t => `<option value="${t}"${t === (l.tier || '中') ? ' selected' : ''}>${t}｜${it.tierText[t]}</option>`).join('')}</select>`;
         else if (it.perPing) ctrl = `<span class="hint">${ping()} 坪 × ${fmt(it.range[0])}–${fmt(it.range[1])} 元</span>`;
         else ctrl = `<label class="qty">數量 <input id="qty-${key}" data-qty="${key}" type="number" min="1" max="20" step="1" value="${l.qty || 1}"> ${it.unit}</label><span class="hint">每${it.unit} ${fmt(it.range[0])}–${fmt(it.range[1])} 元</span>`;
-        const del = l.auto ? '' : `<button class="btn small ghost" type="button" data-rm="${key}">移除</button>`;
+        const del = l.auto ? '' : `<button class="btn btn-sm btn-ghost" type="button" data-rm="${key}">移除</button>`;
         return `<div class="rl-row${l.on ? '' : ' off'}">
         <input type="checkbox" id="on-${key}" data-on="${key}"${l.on ? ' checked' : ''} aria-label="納入估價">
         <label class="rl-name" for="on-${key}"><b>${esc(nm)}</b>${l.detail ? `<span class="rl-detail">${esc(l.detail)}</span>` : ''}</label>
@@ -549,8 +537,11 @@
   }
 
   /* 步驟 4 */
-  function drawCumChart(res) {
+  function drawCumChart(res, animate) {
     const box = $('#cumChart');
+    clearTimeout(box._draw);
+    if (animate && !LD.motion.reduced()) { box.classList.add('draw'); box._draw = setTimeout(() => box.classList.remove('draw'), 1900); }
+    else if (!animate) box.classList.remove('draw');
     const { svg, geo } = LD.charts.lineChartSVG(res, C.calc.mode, true, box.clientWidth || 640);
     box.innerHTML = svg + '<div class="tip" hidden></div>';
     const svgEl = box.querySelector('svg'), hit = box.querySelector('[data-role="hit"]'), xh = box.querySelector('[data-role="xh"]'), tip = box.querySelector('.tip');
@@ -572,6 +563,7 @@
     hit.addEventListener('pointerdown', show);
     hit.addEventListener('pointerleave', hide);
   }
+  const lastTotals = { id: null };
   function renderCalc() {
     const t = totals();
     $('#cRenoHint').innerHTML = C.calc.renoAuto
@@ -581,7 +573,7 @@
     $$('#modeSeg button').forEach(b => b.setAttribute('aria-checked', String(b.dataset.mode === C.calc.mode)));
     $('#modeHint').textContent = C.calc.mode === '包租' ? '業者擔任二房東，每月付屋主市價 8 折，簽 3 年；空租風險由業者承擔。' : '屋主直接和房客簽約、租金市價 9 折，業者負責管理；空租期間沒有租金。';
     const res = result(), ready = calcReady();
-    $('#conclusion').textContent = ready ? conclusionText(res, C.calc.mode) : '填入下方的房屋評定現值和整理後月租，就會算出三條路的結果。';
+    $('#conclusion').textContent = ready ? LD.util.glue(conclusionText(res, C.calc.mode)) : '填入下方的房屋評定現值和整理後月租，就會算出三條路的結果。';
     const best = rankPaths(res)[0].key;
     const card = p => {
       const bullets = p.key === 'vacant'
@@ -593,11 +585,19 @@
       return `<div class="path${isBest ? ' best' : ''}" data-path="${p.key}">
       <div class="path-key"><i class="sw sw-${p.key}"></i>${esc(name(p.key))}${isBest ? '<span class="badge">十年最高</span>' : ''}</div>
       <div class="big num">${wan(p.total)}</div>
-      <div class="sub">每年 ${p.net >= 0 ? '+' : ''}${fmt(p.net)} 元${p.payback ? `・約第 ${p.payback} 年回收整理費` : ''}</div>
+      <div class="sub">每年\u00a0${p.net >= 0 ? '+' : ''}${fmt(p.net)}\u00a0元${p.payback ? `，約第\u00a0${p.payback}\u00a0年回收整理費` : ''}</div>
       <ul>${bullets.map(b => `<li>${esc(b)}</li>`).join('')}</ul>
     </div>`;
     };
     $('#paths').innerHTML = [res.A, res.B, res.C].map(card).join('');
+    const same = lastTotals.id === C.id;
+    for (const p of [res.A, res.B, res.C]) {
+      const el = $(`#paths [data-path="${p.key}"] .big`);
+      LD.motion.tween(el, same ? lastTotals[p.key] : NaN, p.total, wan);
+      lastTotals[p.key] = p.total;
+    }
+    lastTotals.id = C.id;
+    LD.motion.follow($('#paths .path.best'));
     $('#legend').innerHTML = [res.A, res.B, res.C].map(p => `<span><i class="lk lk-${p.key}"></i>${esc(name(p.key))}</span>`).join('');
     drawCumChart(res);
     const rowsDef = [['租金收入', 'rent', 1], ['找房客費用', 'find', -1], ['維修費', 'maint', -1], ['修繕補助', 'subsidy', 1], ['房屋稅', 'house', -1], ['地價稅', 'land', -1], ['租金所得稅', 'income', -1]];
@@ -646,20 +646,28 @@
     $('#sumBars').innerHTML = calcReady() ? LD.charts.barsHTML(result(), C.calc.mode) : '<span class="hint">填入稅單現值和月租後顯示</span>';
     $('#sumNote').textContent = C.demo ? '示範案例的數字都是示範值。' : '';
   }
+  let stepMemo = { id: null, done: {} };
   function renderSteps() {
     const done = { 1: C.repairs.some(l => l.on), 2: !!(currentBefore() && urlOf(C.after.afterId)), 3: !!C.deedFields, 4: calcReady(), 5: !!C.explanation || C.status !== 'visit' };
+    const same = stepMemo.id === C.id;
     $$('.win').forEach(w => {
       const n = Number(w.dataset.step);
+      if (same && done[n] && !stepMemo.done[n]) LD.motion.replay(w, 'flick');
       w.classList.toggle('done', !!done[n]);
       if (n === C.step) w.setAttribute('aria-current', 'step'); else w.removeAttribute('aria-current');
       w.setAttribute('aria-label', `步驟 ${n} ${w.querySelector('.lbl').textContent}${done[n] ? '（已完成）' : ''}`);
     });
+    stepMemo = { id: C.id, done };
   }
+  let shownPanel = null;
   function go(step, fromRoute) {
     C.step = step;
     $$('[data-panel]').forEach(p => { p.hidden = Number(p.dataset.panel) !== step; });
+    const key = C.id + '/' + step, changed = key !== shownPanel;
+    shownPanel = key;
+    if (changed) LD.motion.replay($(`[data-panel="${step}"]`), 'enter');
     renderSteps();
-    if (step === 4) drawCumChart(result());   // 面板顯示後才量得到寬度
+    if (step === 4) drawCumChart(result(), changed);   // 面板顯示後才量得到寬度
     if (step === 5) renderReport();
     setHash(`#visit/${C.id}/${step}`, fromRoute);
     window.scrollTo(0, 0);
@@ -881,27 +889,26 @@
 
     // 案件總覽
     $('#statusFilter').addEventListener('click', e => { const b = e.target.closest('[data-filter]'); if (!b) return; listFilter = b.dataset.filter; renderCases(); });
+    $('#aiOffClose').addEventListener('click', () => { AI.noticeClosed = true; $('#aiOff').hidden = true; });
     $('#showDemo').addEventListener('change', e => { prefs.showDemo = e.target.checked; store.savePrefs(prefs); renderCases(); });
     $('#btnExport').addEventListener('click', exportCSV);
     $('#btnBackup').addEventListener('click', backup);
     $('#restoreInput').addEventListener('change', e => { const f = e.target.files && e.target.files[0]; e.target.value = ''; if (f) restore(f); });
     const list = $('#caseList');
-    let delArmed = null, delTimer = null;
     list.addEventListener('click', e => {
       const del = e.target.closest('[data-del]');
       if (del) {
-        const id = del.dataset.del;
-        if (delArmed !== id) {
-          delArmed = id; del.textContent = '確定刪除？'; del.classList.add('danger');
-          clearTimeout(delTimer); delTimer = setTimeout(() => { delArmed = null; if (currentView === 'cases') renderCases(); }, 4000);
-          return;
-        }
-        delArmed = null; clearTimeout(delTimer);
-        userCases = userCases.filter(c => c.id !== id);
-        persist(); store.deletePrefix(id + '/');
+        const id = del.dataset.del, idx = userCases.findIndex(c => c.id === id);
+        if (idx < 0) return;
+        const [gone] = userCases.splice(idx, 1);
         if (C && C.id === id) C = null;
+        persist();
         renderCases();
-        setStatus('#casesStatus', '已刪除案件。');
+        LD.motion.toast(`已刪除「${caseName(gone)}」`, {
+          action: '復原', timeout: 7000,
+          onAction: () => { if (!userCases.some(c => c.id === id)) userCases.splice(Math.min(idx, userCases.length), 0, gone); persist(); if (currentView === 'cases') renderCases(); },
+          onExpire: () => { if (!userCases.some(c => c.id === id)) store.deletePrefix(id + '/'); }
+        });
         return;
       }
       if (e.target.closest('select,label,button')) return;
@@ -933,6 +940,7 @@
       const b = e.target.closest('[data-status]');
       if (!b) return;
       setCaseStatus(b.dataset.status);
+      if (b.dataset.status === 'signed') LD.motion.sparkAt(b, { count: 14, reach: 48 });
       setStatus('#decideStatus', `已記錄為「${STATUS[b.dataset.status].label}」。${C.demo ? '示範案件不會保存。' : '案件總覽的轉換率會一起更新。'}`);
     });
     $('#followUp').addEventListener('input', e => { C.followUp = /^\d{4}-\d{2}-\d{2}$/.test(e.target.value) ? e.target.value : ''; touch(); });
@@ -1096,6 +1104,11 @@
     $('#btnDownload').addEventListener('click', downloadReport);
     $('#btnLine').addEventListener('click', copyLine);
   }
+
+  demoReady.then(() => {
+    const u = id => BL[id] && BL[id].url;
+    LD.intro.setImages({ before: u('demo-p1'), after: u('demo-after'), deed: u('demo-deed') });
+  });
 
   /* ================= 啟動 ================= */
   const style = document.createElement('style'); style.textContent = LD.report.REPORT_CSS; document.head.appendChild(style);

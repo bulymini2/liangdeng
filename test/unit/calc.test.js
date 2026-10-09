@@ -124,3 +124,10 @@ test('單項金額：坪數、數量、分級、自訂', () => {
   assert.equal(JSON.stringify(lineCost({ id: 'custom', amount: 5000 }, 20)), '[5000,5000]');
   assert.equal(repairTotals([{ id: 'paint', on: false }], 20).mid, 0);
 });
+
+test('畫面上的結論句：數字和單位不會被拆到兩行', () => {
+  const t = LD.util.glue('以目前條件，10 年下來「社宅包租」的淨收入最高，約 142 萬，比繼續空著多 159 萬。');
+  assert.equal(t, '以目前條件，10\u00a0年下來「社宅包租」的淨收入最高，約\u00a0142\u00a0萬，比繼續空著多\u00a0159\u00a0萬。');
+  assert.equal(LD.util.glue('房屋稅 2.6% 起'), '房屋稅\u00a02.6%\u00a0起');
+  assert.equal(LD.util.glue('損失 -17.7 萬'), '損失\u00a0-17.7\u00a0萬');
+});
