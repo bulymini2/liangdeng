@@ -33,10 +33,11 @@
     }).join('') + '</div>';
   }
 
-  /** 累計淨收入折線圖。回傳 { svg, geo }，geo 給滑鼠提示框換算座標用。 */
-  function lineChartSVG(res, mode, withHover) {
+  /** 累計淨收入折線圖。回傳 { svg, geo }，geo 給滑鼠提示框換算座標用。
+      width：容器寬度（像素）。圖的座標寬度跟著容器，手機上的字才不會被縮小。 */
+  function lineChartSVG(res, mode, withHover, width) {
     const { wan } = LD.util;
-    const W = 640, H = 270, m = { l: 58, r: 66, t: 14, b: 30 };
+    const W = Math.round(Math.max(300, Math.min(760, width || 640))), H = W < 480 ? 230 : 270, m = { l: 58, r: 66, t: 14, b: 30 };
     const series = [res.A, res.B, res.C];
     const all = series.flatMap(p => p.cum);
     const ticks = niceTicks(Math.min(0, ...all), Math.max(0, ...all), 4);

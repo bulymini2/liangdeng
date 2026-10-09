@@ -1,117 +1,331 @@
-/* 畫面與狀態。資料與計算在其他檔案：rules.js、catalog.js、calc.js、deed.js、prompts.js、charts.js、report.js、platform.js */
+/* 畫面、狀態與路由。三個畫面：開場（#intro）、案件總覽（#cases）、拜訪流程（#visit/案件ID/步驟）。
+   資料格式在 pipeline.js、保存在 store.js、金額在 calc.js；這裡只負責把它們接到畫面上。 */
 (function (LD) {
   'use strict';
 
   const { esc, fmt, wan, pct, clampInt, today, uid, srcLinks } = LD.util;
   const { computePaths, rankPaths, pathName, conclusionText, lineCost, repairTotals, autoRepairLines } = LD.calc;
-  const { CATALOG, FIND_ITEMS, ITEM_LABEL, ROOMS, CONCERNS, RULES, NATIONAL, SRC } = LD;
-  const platform = LD.platform;
+  const P = LD.pipeline;
+  const { STATUSES, STATUS, DEFAULT_FEES } = P;
+  const { CATALOG, ITEM_LABEL, ROOMS, CONCERNS, RULES, NATIONAL, SRC } = LD;
+  const platform = LD.platform, store = LD.store;
   const $ = (s, r) => (r || document).querySelector(s);
   const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
+  const pad2 = n => String(n).padStart(2, '0');
+  const isoDate = (d = new Date()) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+  const md = s => s ? s.slice(5).replace('-', '/') : '';
+  const stamp = () => new Date().toISOString();
 
   /* ================= 狀態 ================= */
-  function blankState() {
-    return {
-      demo: false, step: 1,
-      case: { city: 'hsinchu', addr: '', ping: 0, age: 0, rooms: 0, halls: 0, baths: 0, kwh: '' },
-      photos: [], diagnosis: null, repairs: [],
-      after: { photoId: null, ownBefore: null, prompt: null, afterUrl: null, afterBlob: null },
-      deedFields: null, deedDemo: false, deedBlob: null, deedUrl: null,
-      calc: { houseValue: 0, landValue: 0, count: 1, inherited: false, bracket: 0.12, rent: 0, renoAuto: true, reno: 0, mode: '包租', vacancy: 1, agentMonths: 0.25, maint: 12000, years: 10 },
-      concerns: [], concernText: '', explanation: ''
-    };
+  const prefs = store.loadPrefs();
+  function fees() {
+    const f = prefs.fees, n = (v, d) => Number.isFinite(Number(v)) && Number(v) >= 0 ? Number(v) : d;
+    if (!f || !f.devFee) return DEFAULT_FEES;
+    return { devFee: { '包租': n(f.devFee['包租'], 18000), '代管': n(f.devFee['代管'], 13000) }, serviceFee: n(f.serviceFee, 2500) };
+  }
+  const autoLines = d => autoRepairLines(d).map(l => ({ key: uid(), auto: true, on: true, qty: 1, ...l }));
+  function withRepairs(c) { if (!Array.isArray(c.repairs)) c.repairs = autoLines(c.diagnosis); return c; }
+
+  let userCases = store.loadCases().map(c => P.normalizeCase(c, isoDate())).filter(Boolean).map(withRepairs);
+  let demoCases = [];
+  let C = null;                 // 目前開啟的案件
+  const BL = {};                // 圖片：圖片 ID → { blob, url（data URL）, w, h }
+  let listFilter = 'all';
+  let currentView = null;
+  let shownHash = null;
+
+  function buildDemos() {
+    const main = withRepairs(LD.demo.mainDemo());
+    main.after.afterId = 'demo-after';
+    main.deedImgId = 'demo-deed';
+    demoCases = [main, ...LD.demo.otherDemos()];
+  }
+  buildDemos();
+
+  const blobToDataURL = blob => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => rej(r.error); r.readAsDataURL(blob); });
+  const imageOf = async (blob, w, h) => ({ blob, url: await blobToDataURL(blob), w: w || 0, h: h || 0 });
+  function dataURLToBlob(url) {
+    const comma = url.indexOf(',');
+    const mime = url.slice(5, url.indexOf(';'));
+    const bin = atob(url.slice(comma + 1)), u8 = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+    return new Blob([u8], { type: mime });
   }
 
-  /** 示範案例：竹北 25 坪、屋齡 32 年的繼承老公寓。數字都是示範值。 */
-  function demoState() {
-    const s = blankState();
-    s.demo = true;
-    s.case = { city: 'hsinchu', addr: '新竹縣竹北市（示範）', ping: 25, age: 32, rooms: 3, halls: 2, baths: 1, kwh: 28 };
-    s.diagnosis = {
-      demo: true,
-      overall: '屋況屬於一般老公寓，結構沒有明顯問題。主要是油漆、地板和浴室設備老舊，客廳靠窗的壁癌要先找出漏水來源。整理完就能出租。',
-      photos: [
-        { photoId: null, room: '客廳', score: 3, summary: '牆面泛黃、靠窗有壁癌，磁磚地板有裂痕', findings: [
-          { item: 'paint', severity: '中', count: 1, evidence: '牆面與天花板整體泛黃、多處髒污' },
-          { item: 'leak', severity: '中', count: 1, evidence: '靠窗牆面約一平方公尺油漆起泡、白色結晶' },
-          { item: 'floor', severity: '中', count: 1, evidence: '磁磚地板三處裂痕，邊角翹起' },
-          { item: 'lighting', severity: '輕', count: 2, evidence: '日光燈老舊，其中一支不亮' } ] },
-        { photoId: null, room: '臥室', score: 3, summary: '天花板角落有水漬，沒有冷氣', findings: [
-          { item: 'leak', severity: '輕', count: 1, evidence: '天花板角落約手掌大的水漬' },
-          { item: 'aircon', severity: '中', count: 1, evidence: '臥室沒有冷氣，牆上留有舊窗型冷氣孔' },
-          { item: 'lighting', severity: '輕', count: 1, evidence: '吸頂燈燈罩發黃' } ] },
-        { photoId: null, room: '浴室', score: 2, summary: '馬桶與洗臉盆老舊，龍頭鏽蝕', findings: [
-          { item: 'bathroom', severity: '中', count: 1, evidence: '馬桶底座黃垢、洗臉盆裂痕、龍頭鏽蝕' } ] },
-        { photoId: null, room: '廚房', score: 3, summary: '廚具堪用，熱水器外殼生鏽', findings: [
-          { item: 'kitchen', severity: '輕', count: 1, evidence: '水槽龍頭鬆動，檯面矽利康發霉' },
-          { item: 'water_heater', severity: '中', count: 1, evidence: '陽台熱水器外殼生鏽、排氣口變色' } ] }
-      ]
-    };
-    s.deedFields = { '門牌': '新竹縣竹北市○○路○○號三樓（示範）', '主要用途': '住家用', '主要建材': '鋼筋混凝土造', '層數': '五層', '層次': '三層', '總面積平方公尺': 84.6, '建築完成日期': '民國083年05月20日', '登記原因': '繼承', '所有權人數': 1, '權利範圍': ['全部'], '他項權利': '無', '讀不清楚的欄位': [] };
-    s.deedDemo = true;
-    s.calc = { houseValue: 450000, landValue: 600000, count: 1, inherited: false, bracket: 0.2, rent: 18000, renoAuto: true, reno: 0, mode: '包租', vacancy: 1, agentMonths: 0.25, maint: 12000, years: 10 };
-    s.concerns = ['擔心房客弄壞房子', '要和家人一起決定'];
-    return s;
-  }
+  /** 示範圖片：程式畫好的插圖轉成 JPEG（AI 也能讀），只放在記憶體 */
+  const demoReady = (async () => {
+    const m = LD.demo.mainDemo();
+    const jobs = m.photos.map(p => [p.id, LD.demo.room(p.art, false), p.w, p.h])
+      .concat([['demo-after', LD.demo.room(m.after.afterArt, true), 800, 600], ['demo-deed', LD.demo.deedSVG(), 800, 900]]);
+    for (const [id, svg, w, h] of jobs) {
+      try { BL[id] = await imageOf(await LD.demo.svgToJpeg(svg, w, h), w, h); } catch (e) { /* 示範圖失敗不影響其他功能 */ }
+    }
+  })();
 
-  let S = demoState();
-  rebuildAutoRepairs();
+  const allCases = () => (prefs.showDemo ? demoCases : []).concat(userCases);
+  const findCase = id => demoCases.find(c => c.id === id) || userCases.find(c => c.id === id);
 
-  /** AI 診斷結果更新時，重建自動產生的修繕項目，手動加入的保留。 */
-  function rebuildAutoRepairs() {
-    const manual = S.repairs.filter(r => !r.auto);
-    S.repairs = autoRepairLines(S.diagnosis).map(l => ({ key: uid(), auto: true, on: true, qty: 1, ...l })).concat(manual);
+  /* ---------- 保存（示範案件不保存；空白案件不保存） ---------- */
+  let saveTimer = null, saveOK = true;
+  function persist() {
+    clearTimeout(saveTimer); saveTimer = null;
+    saveOK = store.saveCases(userCases.filter(c => !P.isBlankCase(c)));
+    renderStoreWarn();
   }
-
-  /* ================= 草稿（只存在這台裝置的瀏覽器） ================= */
-  const DRAFT_KEY = 'liangdeng-draft-v1';
-  let saveTimer = null;
-  function saveDraft() {
-    clearTimeout(saveTimer);
-    saveTimer = setTimeout(() => {
-      try {
-        const copy = { ...S, photos: S.photos.map(p => ({ id: p.id, room: p.room })), after: { ...S.after, afterUrl: null, afterBlob: null, ownBefore: null }, deedBlob: null, deedUrl: null };
-        localStorage.setItem(DRAFT_KEY, JSON.stringify(copy));
-      } catch (e) { /* 無法儲存也不影響使用 */ }
-    }, 400);
+  const scheduleSave = () => { clearTimeout(saveTimer); saveTimer = setTimeout(persist, 400); };
+  const flush = () => { if (saveTimer) persist(); };
+  function markChanged(c) { if (c && !c.demo) { c.updatedAt = stamp(); scheduleSave(); } }
+  const touch = () => markChanged(C);
+  function renderStoreWarn() {
+    const relevant = currentView === 'cases' || (currentView === 'visit' && C && !C.demo);
+    $('#storeWarn').hidden = !relevant || (store.persistent && saveOK);
   }
-  function loadDraft() {
-    try {
-      const raw = localStorage.getItem(DRAFT_KEY);
-      if (!raw) return null;
-      const d = JSON.parse(raw);
-      if (!d || !d.case || !d.calc) return null;
-      const s = blankState();
-      Object.assign(s, d);
-      s.calc = { ...blankState().calc, ...d.calc };
-      s.photos = (d.photos || []).map(p => ({ id: p.id, room: p.room, blob: null, url: null, lost: true }));
-      s.after = { ...blankState().after, prompt: (d.after && d.after.prompt) || null, photoId: (d.after && d.after.photoId) || null };
-      return s;
-    } catch (e) { return null; }
+  function keepImage(id, im) {
+    BL[id] = im;
+    if (C && !C.demo) store.putBlob(C.id + '/' + id, im.blob);
+  }
+  async function loadImages(c) {
+    if (c.demo) { await demoReady; return; }
+    for (const id of P.imageIds(c)) {
+      if (BL[id]) continue;
+      const blob = await store.getBlob(c.id + '/' + id);
+      if (blob) { try { BL[id] = await imageOf(blob); } catch (e) { /* 略過壞掉的圖片 */ } }
+    }
   }
 
   /* ================= 衍生資料 ================= */
-  const ping = () => S.case.ping || 0;
-  const totals = () => repairTotals(S.repairs, ping());
-  const renoUsed = () => S.calc.renoAuto ? totals().mid : S.calc.reno;
-  const result = () => computePaths({ ...S.calc, city: S.case.city }, renoUsed(), RULES, NATIONAL);
-  const calcReady = () => S.calc.rent > 0 && S.calc.houseValue > 0;
-  const name = k => pathName(k, S.calc.mode);
-  const cityName = () => RULES[S.case.city].name;
-  function caseTitle() {
-    const c = S.case;
-    const place = c.addr ? c.addr.replace(/（示範）/, '') : cityName();
-    return place + (c.ping ? ` · ${c.ping} 坪` : '');
+  const ping = (c = C) => c.case.ping || 0;
+  const totals = (c = C) => repairTotals(c.repairs || [], ping(c));
+  const renoUsed = (c = C) => c.calc.renoAuto ? totals(c).mid : c.calc.reno;
+  const result = (c = C) => computePaths({ ...c.calc, city: c.case.city }, renoUsed(c), RULES, NATIONAL);
+  const calcReady = (c = C) => c.calc.rent > 0 && c.calc.houseValue > 0;
+  const name = k => pathName(k, C.calc.mode);
+  const cityName = (c = C) => RULES[c.case.city].name;
+  function caseTitle(c = C) {
+    const addr = (c.case.addr || '').replace(/（示範）/, '').trim();
+    if (!addr && !c.case.ping) return '新案件';
+    return (addr || cityName(c)) + (c.case.ping ? ` · ${c.case.ping} 坪` : '');
   }
-  /** 報告與提示詞用的快照 */
   function view() {
     return {
-      case: S.case, cityName: cityName(), title: caseTitle(), mode: S.calc.mode,
+      case: C.case, cityName: cityName(), title: caseTitle(), mode: C.calc.mode,
       res: result(), ready: calcReady(), totals: totals(),
-      repairs: S.repairs.map(l => { const [lo, hi] = lineCost(l, ping()); return { ...l, lo, hi, name: l.id === 'custom' ? l.name : CATALOG[l.id].name }; }),
-      diagnosis: S.diagnosis, checks: S.deedFields ? LD.deed.deedChecks(S.deedFields) : [],
-      explanation: S.explanation, demo: S.demo, date: today()
+      repairs: C.repairs.map(l => { const [lo, hi] = lineCost(l, ping()); return { ...l, lo, hi, name: l.id === 'custom' ? l.name : CATALOG[l.id].name }; }),
+      diagnosis: C.diagnosis, checks: C.deedFields ? LD.deed.deedChecks(C.deedFields) : [],
+      explanation: C.explanation, demo: C.demo, date: today()
     };
+  }
+
+  /* ================= 路由 ================= */
+  function parseHash(h) {
+    h = String(h == null ? location.hash : h).replace(/^#/, '');
+    const m = h.match(/^visit\/([A-Za-z0-9_-]{1,64})(?:\/(\d))?$/);
+    if (m) return { view: 'visit', id: m[1], step: clampInt(m[2], 0, 0, 5) };   // 0：回到案件上次的步驟
+    if (h === 'cases' || h === 'intro') return { view: h };
+    return { view: prefs.seenIntro ? 'cases' : 'intro' };
+  }
+  function setHash(h, replace) {
+    shownHash = h;
+    if (location.hash === h) return;
+    try { history[replace ? 'replaceState' : 'pushState'](null, '', h); }
+    catch (e) { try { location.hash = h; } catch (e2) { /* 不能改網址時只更新畫面 */ } }
+  }
+  async function nav(r, replace) {
+    setHash(r.view === 'visit' ? `#visit/${r.id}` + (r.step ? '/' + r.step : '') : '#' + r.view, replace);
+    await render(r);
+  }
+  function onHistory() {
+    if (location.hash === shownHash) return;
+    shownHash = location.hash;
+    render(parseHash());
+  }
+  /** 離開一個什麼都沒填的新案件時，直接丟掉，不計入總覽 */
+  function leaveBlank(r) {
+    if (!C || C.demo || !P.isBlankCase(C) || (r.view === 'visit' && r.id === C.id)) return;
+    const id = C.id;
+    userCases = userCases.filter(c => c.id !== id);
+    C = null;
+    persist();
+  }
+  async function render(r) {
+    flush();
+    leaveBlank(r);
+    if (r.view === 'visit') {
+      const c = findCase(r.id);
+      if (!c) return nav({ view: 'cases' }, true);
+      if (c !== C) {
+        abortAll();
+        C = withRepairs(c);
+        await loadImages(c);
+        if (C !== c) return;   // 載入圖片時又切換了案件
+        renderVisitAll();
+      } else renderCaseHead();
+      showView('visit');
+      go(r.step || C.step || 1, true);
+    } else {
+      showView(r.view);
+      if (r.view === 'cases') renderCases();
+      if (r.view === 'intro') {
+        renderFacade();
+        if (!prefs.seenIntro) { prefs.seenIntro = true; store.savePrefs(prefs); }
+      }
+      window.scrollTo(0, 0);
+    }
+  }
+  function showView(v) {
+    currentView = v;
+    $$('main[data-view]').forEach(el => { el.hidden = el.dataset.view !== v; });
+    $$('[data-nav]').forEach(a => { if (a.dataset.nav === v) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
+    updateAIState();
+    renderStoreWarn();
+  }
+  const openCase = (id, step) => nav({ view: 'visit', id, step: step || 0 });
+  function newCase() {
+    const c = P.blankCase('c' + Date.now().toString(36) + uid(), isoDate());
+    c.updatedAt = stamp();
+    userCases.unshift(c);
+    openCase(c.id, 1);
+  }
+
+  /* ================= 開場：亮燈的立面 ================= */
+  let facadeRun = 0;
+  function renderFacade() {
+    const run = ++facadeRun;
+    const box = $('#facade'), lit = $('#litCount');
+    const dark = [3, 14, 27, 31, 46, 52, 58, 69, 75, 88];
+    let html = '';
+    for (let i = 0; i < 100; i++) html += `<span class="w${dark.includes(i) ? ' dark' : (i * 7919) % 13 < 2 ? ' alt' : ''}" data-i="${i}"></span>`;
+    box.innerHTML = html + '<span class="door"></span>';
+    lit.textContent = '';
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    let k = 0;
+    const step = () => {
+      if (run !== facadeRun || currentView !== 'intro' || k >= dark.length) return;
+      const w = box.querySelector(`[data-i="${dark[k]}"]`);
+      if (w) { w.classList.remove('dark'); w.classList.add('on'); }
+      k++;
+      lit.textContent = k < dark.length ? `・已點亮 ${k} 戶` : '・10 戶全部亮燈';
+      setTimeout(step, 420);
+    };
+    setTimeout(step, 2600);
+  }
+
+  /* ================= 案件總覽 ================= */
+  function caseBest(c) {
+    if (!calcReady(c)) return null;
+    const best = rankPaths(result(c))[0];
+    return { name: pathName(best.key, c.calc.mode), total: best.total };
+  }
+  function statusPill(s) { const st = STATUS[s] || STATUS.visit; return `<span class="pill t-${st.tone}">${st.label}</span>`; }
+  function kpisHTML(s) {
+    return `
+      <div class="kpi"><span>拜訪</span><b class="num">${s.visits}<small>戶</small></b><em>進行中 ${s.openCases} 戶</em></div>
+      <div class="kpi"><span>已出報告</span><b class="num">${s.reported}<small>戶</small></b><em>出報告率 ${Math.round(s.reportRate * 100)}%</em></div>
+      <div class="kpi"><span>已簽約</span><b class="num">${s.signed}<small>戶</small></b><em>簽約率 ${Math.round(s.signRate * 100)}%・已決定的 ${s.decided} 戶成交 ${Math.round(s.closeRate * 100)}%</em></div>
+      <div class="kpi lit"><span>預估開發費收入</span><b class="num">${fmt(s.devIncome)}<small>元</small></b><em>亮燈服務費 ${fmt(s.serviceIncome)} 元</em></div>`;
+  }
+  function renderCases() {
+    const list = allCases();
+    const s = P.pipelineStats(list, fees());
+    $('#kpis').innerHTML = kpisHTML(s);
+    const bar = (label, n, cls) => `<div class="fn-row"><div class="fn-top"><span>${label}</span><b>${n}</b></div><div class="fn-track"><div class="fn-bar ${cls}" style="width:${s.visits ? Math.max(2, n / s.visits * 100) : 0}%"></div></div></div>`;
+    $('#funnel').innerHTML = `<div class="funnel">${bar('拜訪', s.visits, '')}${bar('出報告', s.reported, 'l2')}${bar('簽約', s.signed, 'l3')}</div>`;
+    $('#funnelNote').textContent = prefs.showDemo ? '含示範案件' : '';
+
+    const fu = P.followUps(list, isoDate());
+    $('#followList').innerHTML = fu.length
+      ? fu.map(({ c, overdue }) => `<li><span class="date-chip${overdue ? ' over' : ''}">${md(c.followUp)}${overdue ? ' 已過' : ''}</span><span><a href="#visit/${esc(c.id)}/5" data-open="${esc(c.id)}" data-step="5">${esc(caseTitle(c))}</a> ${statusPill(c.status)}</span></li>`).join('')
+      : '<li class="hint">目前沒有要追蹤的案件。在報告頁設定「下次追蹤日期」就會出現在這裡。</li>';
+
+    $('#statusFilter').innerHTML = [{ key: 'all', label: '全部' }].concat(STATUSES).map(o => `<button type="button" role="radio" data-filter="${o.key}" aria-checked="${listFilter === o.key}">${o.label}</button>`).join('');
+    $('#showDemo').checked = prefs.showDemo;
+
+    const rows = list.filter(c => listFilter === 'all' || c.status === listFilter);
+    $('#caseList').innerHTML = rows.length ? rows.map(c => {
+      const b = caseBest(c), id = esc(c.id);
+      const meta = [cityName(c), c.case.ping ? c.case.ping + ' 坪' : '', c.case.age ? '屋齡 ' + c.case.age + ' 年' : '', '建立 ' + md(c.createdAt)].filter(Boolean);
+      return `<div class="case-row" data-open="${id}">
+        <div class="case-main">
+          <div class="case-name"><a href="#visit/${id}/${c.step || 1}" data-open="${id}">${esc(caseTitle(c))}</a>${statusPill(c.status)}${c.demo ? '<span class="pill demo">示範</span>' : ''}</div>
+          <div class="case-meta">${meta.map(m => `<span>${esc(m)}</span>`).join('')}${c.note ? `<span>${esc(c.note)}</span>` : ''}</div>
+        </div>
+        <div class="case-best">${b ? `<span>十年最佳：${esc(b.name)}</span><b class="num">${wan(b.total)}</b>` : '<span>尚未試算</span>'}</div>
+        <div class="case-actions">
+          <label><span class="vh">狀態</span><select data-status-of="${id}">${STATUSES.map(st => `<option value="${st.key}"${st.key === c.status ? ' selected' : ''}>${st.label}</option>`).join('')}</select></label>
+          ${c.followUp ? `<span class="date-chip">追蹤 ${md(c.followUp)}</span>` : ''}
+          ${c.demo ? '' : `<button type="button" class="btn ghost small" data-del="${id}">刪除</button>`}
+        </div>
+      </div>`;
+    }).join('') : `<div class="empty"><span>${listFilter === 'all' ? '還沒有案件。拜訪屋主時按「新拜訪」，做完五個步驟就會出現在這裡。' : '這個狀態目前沒有案件。'}</span>${listFilter === 'all' ? '<button type="button" class="btn primary" data-action="new-case">新拜訪</button>' : ''}</div>`;
+
+    const f = fees();
+    $('#feeLease').value = f.devFee['包租']; $('#feeManage').value = f.devFee['代管']; $('#feeService').value = f.serviceFee;
+  }
+  function exportCSV() {
+    const rows = allCases().map(c => {
+      const res = calcReady(c) ? result(c) : null;
+      return { created: c.createdAt, title: caseTitle(c), city: cityName(c), ping: c.case.ping || '', age: c.case.age || '', status: (STATUS[c.status] || STATUS.visit).label, followUp: c.followUp || '', mode: c.calc.mode, reno: renoUsed(c) || '', vacant: res ? res.A.total : '', self: res ? res.B.total : '', social: res ? res.C.total : '', note: c.note || '', demo: c.demo };
+    });
+    const d = today().replace(/\//g, '');
+    platform.saveFile(`亮燈案件-${d}.csv`, P.casesCSV(rows), `liangdeng-cases-${d}.csv`, 'text/csv;charset=utf-8')
+      .then(() => setStatus('#casesStatus', '已匯出 CSV，可以用 Excel 或 Google 試算表開啟。'))
+      .catch(e => setStatus('#casesStatus', e && e.code === 'declined' ? '已取消匯出。' : '這個檢視不能下載檔案。'));
+  }
+
+  /* ---------- 備份與還原 ---------- */
+  async function backup() {
+    const st = '#backupStatus';
+    flush();
+    const list = userCases.filter(c => !P.isBlankCase(c));
+    if (!list.length) { setStatus(st, '還沒有自己的案件可以備份（示範案件不需要備份）。'); return; }
+    if (!platform.canSave()) { setStatus(st, '這個檢視不能下載檔案。'); return; }
+    setStatus(st, '正在準備備份檔…', true);
+    const images = {};
+    for (const c of list) {
+      for (const id of P.imageIds(c)) {
+        try {
+          if (BL[id]) images[c.id + '/' + id] = BL[id].url;
+          else { const b = await store.getBlob(c.id + '/' + id); if (b) images[c.id + '/' + id] = await blobToDataURL(b); }
+        } catch (e) { /* 單張讀不到就略過 */ }
+      }
+    }
+    const d = today().replace(/\//g, '');
+    const data = JSON.stringify({ app: 'liangdeng', kind: 'backup', version: 1, exportedAt: stamp(), cases: list, images });
+    try {
+      await platform.saveFile(`亮燈備份-${d}.json`, data, `liangdeng-backup-${d}.json`, 'application/json');
+      setStatus(st, `已備份 ${list.length} 件案件、${Object.keys(images).length} 張圖片。`);
+    } catch (e) {
+      setStatus(st, e && e.code === 'declined' ? '已取消備份。' : '這個檢視不能下載檔案。');
+    }
+  }
+  async function restore(file) {
+    const st = '#backupStatus';
+    setStatus(st, '正在讀取備份檔…', true);
+    let obj = null;
+    try { obj = JSON.parse(await file.text()); } catch (e) { obj = null; }
+    if (!obj || obj.app !== 'liangdeng' || !Array.isArray(obj.cases)) { setStatus(st, '這個檔案不是亮燈的備份檔。'); return; }
+    const incoming = obj.cases.map(c => P.normalizeCase(c, isoDate())).filter(Boolean).map(withRepairs);
+    const m = P.mergeCases(userCases, incoming);
+    const imgs = obj.images && typeof obj.images === 'object' ? obj.images : {};
+    let nImg = 0;
+    for (const id of m.accepted) {
+      const c = m.list.find(x => x.id === id);
+      for (const imgId of P.imageIds(c)) {
+        const url = imgs[id + '/' + imgId];
+        if (typeof url !== 'string' || !/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(url)) continue;
+        try {
+          const blob = dataURLToBlob(url);
+          BL[imgId] = { blob, url, w: 0, h: 0 };
+          await store.putBlob(id + '/' + imgId, blob);
+          nImg++;
+        } catch (e) { /* 壞掉的圖片略過 */ }
+      }
+    }
+    userCases = m.list;
+    if (C && m.accepted.includes(C.id)) C = null;   // 開著的案件被備份覆蓋：下次打開時重新載入
+    persist();
+    renderCases();
+    setStatus(st, `還原完成：新增 ${m.added} 件、更新 ${m.updated} 件${m.skipped ? `；${m.skipped} 件本機已是相同或更新的版本，保留不動` : ''}；圖片 ${nImg} 張。`);
   }
 
   /* ================= AI 狀態 ================= */
@@ -123,7 +337,7 @@
     if (HIDE_CODES.includes(code)) { AI.blocked = true; updateAIState(); return '這個頁面沒有取得使用 Claude 的權限，AI 功能已關閉。試算和報告仍可使用。'; }
     switch (code) {
       case 'cancelled': return '已停止。';
-      case 'not_available': return 'AI 目前不能用，請在 Claude 裡開啟這個頁面。';
+      case 'not_available': return 'AI 目前不能用，請在 Claude 線上原型裡開啟。';
       case 'images_unavailable': platform.ai.images = false; updateAIState(); return '這個檢視無法把照片傳給 Claude。';
       case 'image_rejected': return '照片格式或大小不支援，請改用 JPG 或 PNG 再試一次。';
       case 'rate_limited': return 'AI 使用太頻繁或已達用量上限，請稍後再試。';
@@ -135,18 +349,21 @@
       default: return '連線中斷，請再試一次。';
     }
   }
+  const aiText = () => platform.ai.text && !AI.blocked;
+  const explainPlaceholder = () => !AI.checked || aiText() ? '選好屋主的顧慮後，按「AI 白話說明」。' : '這個版本沒有 AI 白話說明；報告仍會列出所有試算數字和來源。';
   function updateAIState() {
-    const textOK = platform.ai.text && !AI.blocked;
-    const imgOK = textOK && platform.ai.images;
+    const textOK = aiText(), imgOK = textOK && platform.ai.images;
     const off = $('#aiOff');
-    off.hidden = textOK || !AI.checked;
+    off.hidden = textOK || !AI.checked || currentView !== 'visit';
     off.textContent = platform.kind === 'claude'
-      ? 'AI 功能目前無法使用（可能沒有取得 Claude 權限）。示範資料、三條路試算和報告不受影響。'
-      : '這個版本在一般瀏覽器開啟，AI 功能要在 Claude 線上原型裡才能用。示範資料、三條路試算和報告都可以操作。';
-    $('#btnDiag').disabled = !imgOK || !S.photos.some(p => p.blob) || !!running.diag;
+      ? 'AI 功能目前無法使用（可能沒有取得 Claude 權限）。示範內容、三條路試算和報告不受影響。'
+      : '這個版本在一般瀏覽器開啟：AI 功能要在 Claude 線上原型裡才能用。示範內容、三條路試算、案件總覽和報告都可以操作。';
+    if (!C) return;
+    $('#btnDiag').disabled = !imgOK || !C.photos.some(p => BL[p.id]) || !!running.diag;
     $('#btnPrompt').disabled = !imgOK || !currentBefore() || !!running.prompt;
-    $('#btnDeed').disabled = !imgOK || !S.deedBlob || !!running.deed;
+    $('#btnDeed').disabled = !imgOK || !(C.deedImgId && BL[C.deedImgId]) || !!running.deed;
     $('#btnExplain').disabled = !textOK || !!running.explain;
+    if (!running.explain && !C.explanation) $('#explainOut').textContent = explainPlaceholder();
   }
   function setStatus(id, text, busy) { const el = $(id); el.textContent = text || ''; el.classList.toggle('busy', !!busy); }
   function setBusy(key, on) {
@@ -154,82 +371,90 @@
     $(stop).hidden = !on;
     updateAIState();
   }
+  function abortAll() { for (const k of Object.keys(running)) if (running[k]) running[k].abort(); }
 
-  /* ================= 照片處理 ================= */
-  /** 讀入照片、縮到長邊 1600px、轉成 JPEG。 */
+  /* ================= 圖片 ================= */
+  async function decode(file) {
+    try { const b = await createImageBitmap(file, { imageOrientation: 'from-image' }); return { src: b, w: b.width, h: b.height }; } catch (e) { /* 改用下一種 */ }
+    try { const b = await createImageBitmap(file); return { src: b, w: b.width, h: b.height }; } catch (e) { /* 改用 <img> */ }
+    const url = await blobToDataURL(file);
+    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
+    return { src: img, w: img.naturalWidth, h: img.naturalHeight };
+  }
+  /** 照片縮到長邊 1600 像素、轉成 JPEG：AI 讀得到、存得下、報告也不會太大 */
   async function prepImage(file) {
-    let src = null, w = 0, h = 0, url = null;
-    try { src = await createImageBitmap(file); w = src.width; h = src.height; } catch (e) { src = null; }
-    if (!src) {
-      url = URL.createObjectURL(file);
-      src = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
-      w = src.naturalWidth; h = src.naturalHeight;
-    }
+    const { src, w, h } = await decode(file);
     const k = Math.min(1, 1600 / Math.max(w, h));
     const cw = Math.max(1, Math.round(w * k)), ch = Math.max(1, Math.round(h * k));
     const cv = document.createElement('canvas'); cv.width = cw; cv.height = ch;
-    cv.getContext('2d').drawImage(src, 0, 0, cw, ch);
-    if (url) URL.revokeObjectURL(url);
+    const ctx = cv.getContext('2d'); ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, cw, ch); ctx.drawImage(src, 0, 0, cw, ch);
+    if (src.close) src.close();
     const blob = await new Promise(res => cv.toBlob(res, 'image/jpeg', 0.85));
     if (!blob) throw new Error('toBlob failed');
-    return { blob, url: URL.createObjectURL(blob), w: cw, h: ch };
+    return imageOf(blob, cw, ch);
   }
-  const blobToDataURL = blob => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(blob); });
   const guessRoom = i => ['客廳', '臥室', '浴室', '廚房', '臥室', '陽台'][i] || '其他';
-  const photoById = id => S.photos.find(p => p.id === id);
+  const photoById = id => C.photos.find(p => p.id === id);
+  const urlOf = id => (id && BL[id] && BL[id].url) || '';
 
-  /* ================= 步驟 1 ================= */
+  /* ================= 拜訪：共用 ================= */
   function fillInputs() {
-    const c = S.case, k = S.calc;
+    const c = C.case, k = C.calc;
     $('#fCity').value = c.city; $('#fAddr').value = c.addr || ''; $('#fPing').value = c.ping || ''; $('#fAge').value = c.age || '';
     $('#fRooms').value = c.rooms || ''; $('#fHalls').value = c.halls || ''; $('#fBaths').value = c.baths || ''; $('#fKwh').value = c.kwh === '' ? '' : c.kwh;
     $('#cHouse').value = k.houseValue || ''; $('#cLand').value = k.landValue || ''; $('#cCount').value = k.count || 1;
     $('#cBracket').value = String(k.bracket); $('#cInherited').checked = !!k.inherited; $('#cRent').value = k.rent || '';
     $('#cReno').value = k.renoAuto ? '' : (k.reno || '');
     $('#cVac').value = k.vacancy; $('#cAgent').value = k.agentMonths; $('#cMaint').value = k.maint;
-    $('#concernText').value = S.concernText || '';
+    $('#concernText').value = C.concernText || '';
+    $('#followUp').value = C.followUp || ''; $('#caseNote').value = C.note || '';
   }
-  function renderHeader() {
-    $('#caseTitle').textContent = (S.case.addr || S.case.ping) ? caseTitle() : '新案件';
-    $('#demoChip').hidden = !S.demo;
-    $('#demoBanner').hidden = !S.demo;
-    const k = Number(S.case.kwh);
-    const note = $('#kwhNote');
-    if (S.case.kwh !== '' && Number.isFinite(k)) {
+  function renderCaseHead() {
+    $('#caseTitle').textContent = caseTitle();
+    $('#demoChip').hidden = !C.demo;
+    $('#demoBanner').hidden = !C.demo;
+    $('#demoText').textContent = C.id === LD.demo.DEMO_ID
+      ? '示範案例：竹北 25 坪、屋齡 32 年的繼承老公寓。照片是示意插圖，金額為示範值；在這裡的修改不會保存。'
+      : '示範案件：只有基本資料和試算條件，金額為示範值；在這裡的修改不會保存。';
+    $('#caseStatus').innerHTML = STATUSES.map(s => `<option value="${s.key}"${s.key === C.status ? ' selected' : ''}>${s.label}</option>`).join('');
+    const k = Number(C.case.kwh), note = $('#kwhNote');
+    if (C.case.kwh !== '' && Number.isFinite(k)) {
       note.innerHTML = k <= 60
         ? `每月約 ${fmt(k)} 度，在 60 度以下：屬內政部統計的「低度使用（用電）住宅」。<a href="${esc(SRC.lowUse.u)}" target="_blank" rel="noopener">定義</a>`
         : `每月約 ${fmt(k)} 度，高於 60 度的低度使用門檻。`;
     } else note.textContent = '台電資料中，每月平均用電 60 度以下的住宅會被列為低度使用住宅，可以向屋主確認電費單。';
+    $$('#decideRow [data-status]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.status === C.status)));
   }
   function renderPhotos() {
-    const grid = $('#photoGrid');
-    const n = S.photos.length;
+    const n = C.photos.length;
     $('#photoCount').textContent = n ? `${n} 張` : '';
-    grid.innerHTML = !n
-      ? `<div class="empty" style="grid-column:1/-1">${S.demo ? '示範案例沒有附照片。開新案件後，' : ''}每個空間拍一張，從門口往內拍、讓牆角和地板入鏡。</div>`
-      : S.photos.map((p, i) => `
-      <div class="ph">
-        <div class="ph-img" style="${p.url ? `background-image:url('${p.url}')` : ''}">${p.url ? '' : '照片未保留<br>請重新加入'}</div>
+    $('#photoGrid').innerHTML = !n
+      ? '<div class="empty" style="grid-column:1/-1"><span>每個空間拍一張：從門口往內拍，讓牆角、天花板和地板入鏡。</span></div>'
+      : C.photos.map((p, i) => {
+        const u = urlOf(p.id), id = esc(p.id);
+        return `<div class="ph">
+        <div class="ph-img"${u ? ` style="background-image:url('${u}')"` : ''}>${u ? '' : '照片沒有保存<br>請重新加入'}</div>
         <div class="ph-meta">
           <span class="ph-idx">${i + 1}</span>
-          <select id="room-${p.id}" data-room="${p.id}" aria-label="第 ${i + 1} 張的空間">${ROOMS.map(r => `<option${r === p.room ? ' selected' : ''}>${r}</option>`).join('')}</select>
-          <button class="btn small ghost" type="button" data-del="${p.id}" aria-label="移除第 ${i + 1} 張">移除</button>
+          <select id="room-${id}" data-room="${id}" aria-label="第 ${i + 1} 張的空間">${ROOMS.map(r => `<option${r === p.room ? ' selected' : ''}>${r}</option>`).join('')}</select>
+          <button class="btn small ghost" type="button" data-del="${id}" aria-label="移除第 ${i + 1} 張">移除</button>
         </div>
-      </div>`).join('');
+      </div>`;
+      }).join('');
     updateAIState();
   }
+  const scoreBar = n => `<span class="score" aria-label="屋況 ${n} 分（滿分 5）">${[1, 2, 3, 4, 5].map(i => `<i class="${i <= n ? 'on' : ''}"></i>`).join('')}</span>`;
   function renderFindings() {
-    const d = S.diagnosis;
+    const d = C.diagnosis;
     $('#findCard').hidden = !d;
     if (!d) return;
-    $('#overall').textContent = (d.demo ? '（示範）' : '') + (d.overall || '');
+    $('#overall').textContent = d.overall || '';
     $('#finds').innerHTML = d.photos.map(p => {
-      const ph = p.photoId ? photoById(p.photoId) : null;
-      const thumb = ph && ph.url ? `style="background-image:url('${ph.url}')"` : '';
+      const u = urlOf(p.photoId);
       return `<div class="find-card">
-      <div class="find-thumb" ${thumb}>${thumb ? '' : esc(p.room)}</div>
+      <div class="find-thumb"${u ? ` style="background-image:url('${u}')"` : ''}>${u ? '' : esc(p.room)}</div>
       <div>
-        <div class="find-title">${esc(p.room)} <span class="score" aria-label="屋況分數 ${p.score} 分">屋況 ${p.score}/5</span></div>
+        <div class="find-title">${esc(p.room)} ${scoreBar(p.score)}</div>
         <div class="hint">${esc(p.summary)}</div>
         ${p.findings.length ? `<ul class="find-list">${p.findings.map(f => `<li><span class="sev s${f.severity}">${esc(ITEM_LABEL[f.item])}・${f.severity}</span><span>${esc(f.evidence)}${f.count > 1 ? `（${f.count}）` : ''}</span></li>`).join('')}</ul>` : '<div class="hint">沒有需要整理的項目。</div>'}
       </div></div>`;
@@ -237,30 +462,30 @@
   }
   function renderRepairs() {
     const list = $('#repairList');
-    if (!S.repairs.length) {
-      list.innerHTML = '<div class="empty">還沒有修繕項目。AI 診斷照片後會自動列出，也可以從「加入其他項目」手動加入。</div>';
+    if (!C.repairs.length) {
+      list.innerHTML = '<div class="empty"><span>還沒有修繕項目。AI 診斷照片後會自動列出，也可以從「加入其他項目」手動加入。</span></div>';
     } else {
-      list.innerHTML = S.repairs.map(l => {
+      list.innerHTML = C.repairs.map(l => {
         const [a, b] = lineCost(l, ping());
-        const it = CATALOG[l.id];
+        const it = CATALOG[l.id], key = esc(l.key);
         const nm = l.id === 'custom' ? l.name : it.name;
         let ctrl;
         if (l.id === 'custom') ctrl = '<span class="hint">自訂金額</span>';
-        else if (it.tiers) ctrl = `<select id="tier-${l.key}" data-tier="${l.key}" aria-label="整理程度">${['輕', '中', '重'].map(t => `<option value="${t}"${t === (l.tier || '中') ? ' selected' : ''}>${t}｜${it.tierText[t]}</option>`).join('')}</select>`;
+        else if (it.tiers) ctrl = `<select id="tier-${key}" data-tier="${key}" aria-label="整理程度">${['輕', '中', '重'].map(t => `<option value="${t}"${t === (l.tier || '中') ? ' selected' : ''}>${t}｜${it.tierText[t]}</option>`).join('')}</select>`;
         else if (it.perPing) ctrl = `<span class="hint">${ping()} 坪 × ${fmt(it.range[0])}–${fmt(it.range[1])} 元</span>`;
-        else ctrl = `<label class="qty">數量 <input id="qty-${l.key}" data-qty="${l.key}" type="number" min="1" max="20" step="1" value="${l.qty || 1}"> ${it.unit}</label><span class="hint">每${it.unit} ${fmt(it.range[0])}–${fmt(it.range[1])} 元</span>`;
-        const del = l.auto ? '' : `<button class="btn small ghost" type="button" data-rm="${l.key}">移除</button>`;
+        else ctrl = `<label class="qty">數量 <input id="qty-${key}" data-qty="${key}" type="number" min="1" max="20" step="1" value="${l.qty || 1}"> ${it.unit}</label><span class="hint">每${it.unit} ${fmt(it.range[0])}–${fmt(it.range[1])} 元</span>`;
+        const del = l.auto ? '' : `<button class="btn small ghost" type="button" data-rm="${key}">移除</button>`;
         return `<div class="rl-row${l.on ? '' : ' off'}">
-        <input type="checkbox" id="on-${l.key}" data-on="${l.key}"${l.on ? ' checked' : ''} aria-label="納入估價">
-        <label class="rl-name" for="on-${l.key}"><b>${esc(nm)}</b>${l.detail ? `<span class="rl-detail">${esc(l.detail)}</span>` : ''}</label>
+        <input type="checkbox" id="on-${key}" data-on="${key}"${l.on ? ' checked' : ''} aria-label="納入估價">
+        <label class="rl-name" for="on-${key}"><b>${esc(nm)}</b>${l.detail ? `<span class="rl-detail">${esc(l.detail)}</span>` : ''}</label>
         <span class="amt">${a === b ? fmt(a) : fmt(a) + '–' + fmt(b)}</span>
         <div class="ctrls">${ctrl}${del}</div>
       </div>`;
       }).join('');
     }
     const t = totals();
-    $('#repairTotal').innerHTML = S.repairs.some(l => l.on)
-      ? `<span class="hint">估計</span><b>${wan(t.mid)}</b><span class="hint">區間 ${wan(t.lo)}–${wan(t.hi)}</span>`
+    $('#repairTotal').innerHTML = C.repairs.some(l => l.on)
+      ? `<span class="hint">估計</span><b class="num">${wan(t.mid)}</b><span class="hint">區間 ${wan(t.lo)}–${wan(t.hi)}</span>`
       : '<span class="hint">尚未列入項目</span>';
   }
   function renderBasis() {
@@ -271,28 +496,29 @@
     $('#basisTable').innerHTML = `<thead><tr><th>項目</th><th>費用（元）</th><th>說明與來源</th></tr></thead><tbody>${rows}</tbody>`;
   }
 
-  /* ================= 步驟 2 ================= */
+  /* 步驟 2 */
   function currentBefore() {
-    if (S.after.photoId === '__own' && S.after.ownBefore) return S.after.ownBefore;
-    const p = S.after.photoId ? photoById(S.after.photoId) : null;
-    return p && p.blob ? { blob: p.blob, url: p.url, room: p.room, id: p.id, w: p.w, h: p.h } : null;
+    const a = C.after;
+    if (a.photoId === '__own' && a.ownBefore && BL[a.ownBefore.id]) return { ...BL[a.ownBefore.id], id: '__own', room: '其他', w: a.ownBefore.w || BL[a.ownBefore.id].w, h: a.ownBefore.h || BL[a.ownBefore.id].h };
+    const p = a.photoId ? photoById(a.photoId) : null;
+    return p && BL[p.id] ? { ...BL[p.id], id: p.id, room: p.room, w: p.w || BL[p.id].w, h: p.h || BL[p.id].h } : null;
   }
   function renderStep2() {
-    const opts = S.photos.filter(p => p.blob);
-    if (!S.after.photoId && opts.length) S.after.photoId = opts[0].id;
-    const own = S.after.ownBefore;
-    const items = opts.map(p => ({ id: p.id, url: p.url, label: p.room })).concat(own ? [{ id: '__own', url: own.url, label: '另外上傳' }] : []);
+    const opts = C.photos.filter(p => BL[p.id]);
+    if (!C.after.photoId && opts.length) C.after.photoId = opts[0].id;
+    const own = C.after.ownBefore && BL[C.after.ownBefore.id];
+    const items = opts.map(p => ({ id: p.id, url: urlOf(p.id), label: p.room })).concat(own ? [{ id: '__own', url: own.url, label: '另外上傳' }] : []);
     $('#chooseList').innerHTML = items.length
-      ? items.map(o => `<label><input type="radio" name="before" id="pick-${o.id}" value="${o.id}"${S.after.photoId === o.id ? ' checked' : ''}><span class="t" style="background-image:url('${o.url}')"></span>${esc(o.label)}</label>`).join('')
-      : `<div class="empty" style="width:100%">${S.demo ? '示範案例沒有附照片。' : ''}先在步驟 1 加入照片，或在這裡另外上傳一張。</div>`;
-    const pr = S.after.prompt;
+      ? items.map(o => `<label><input type="radio" name="before" id="pick-${esc(o.id)}" value="${esc(o.id)}"${C.after.photoId === o.id ? ' checked' : ''}><span class="t" style="background-image:url('${o.url}')"></span>${esc(o.label)}</label>`).join('')
+      : '<div class="empty" style="width:100%"><span>先在步驟 1 加入照片，或在這裡另外上傳一張。</span></div>';
+    const pr = C.after.prompt;
     $('#promptBox').hidden = !pr;
     if (pr) { $('#promptEn').textContent = pr.en; $('#promptZh').textContent = pr.zh; }
-    const before = currentBefore();
+    const before = currentBefore(), afterUrl = urlOf(C.after.afterId);
     const wrap = $('#compareWrap');
-    if (before && S.after.afterUrl) {
+    if (before && afterUrl) {
       wrap.innerHTML = `<div class="compare" id="cmp" style="--ar:${before.w || 4}/${before.h || 3}">
-      <img src="${S.after.afterUrl}" alt="整理後">
+      <img src="${afterUrl}" alt="整理後">
       <div class="cmp-before"><img src="${before.url}" alt="整理前"></div>
       <div class="cmp-line"></div>
       <span class="cmp-tag l">整理前</span><span class="cmp-tag r">整理後</span>
@@ -301,30 +527,31 @@
       const cmp = $('#cmp');
       $('#cmpRange').addEventListener('input', e => cmp.style.setProperty('--pos', e.target.value + '%'));
     } else {
-      wrap.innerHTML = `<div class="empty">${before ? '上傳整理後的圖片後，這裡會顯示前後對照。' : '選一張原圖並上傳整理後的圖片，這裡會顯示前後對照。'}</div>`;
+      wrap.innerHTML = `<div class="empty"><span>${before ? '上傳整理後的圖片，這裡就會出現前後對照。' : '選一張原圖並上傳整理後的圖片，這裡就會出現前後對照。'}</span></div>`;
     }
     updateAIState();
   }
 
-  /* ================= 步驟 3 ================= */
+  /* 步驟 3 */
   function renderDeed() {
-    $('#deedThumb').innerHTML = S.deedUrl ? `<div class="find-thumb deed" style="background-image:url('${S.deedUrl}')"></div>` : '';
-    const f = S.deedFields;
+    const u = urlOf(C.deedImgId);
+    $('#deedThumb').innerHTML = u ? `<div class="deed-img" style="background-image:url('${u}')" role="img" aria-label="謄本照片"></div>` : '';
+    const f = C.deedFields;
     $('#deedCard').hidden = !f;
     if (!f) { updateAIState(); return; }
-    const val = v => v == null || v === '' ? '<span class="muted">讀不到</span>' : esc(Array.isArray(v) ? v.join('、') : v);
+    const val = v => v == null || v === '' ? '<span class="hint">讀不到</span>' : esc(Array.isArray(v) ? v.join('、') : v);
     const unclear = Array.isArray(f['讀不清楚的欄位']) && f['讀不清楚的欄位'].length ? `<p class="hint">AI 標記為看不清楚：${esc(f['讀不清楚的欄位'].join('、'))}</p>` : '';
-    $('#deedResult').innerHTML = `${S.deedDemo ? '<p class="hint">（示範謄本）</p>' : ''}
+    $('#deedResult').innerHTML = `
     <ul class="checks">${LD.deed.deedChecks(f).map(c => `<li><span class="st ${c.s}">${c.l}</span><div><b>${esc(c.t)}</b><span class="d">${esc(c.d)}</span></div></li>`).join('')}</ul>
     <details><summary>讀出的欄位</summary><div class="table-wrap"><table><tbody>${LD.deed.DEED_KEYS.map(k => `<tr><td>${k}</td><td class="txt">${val(f[k])}</td></tr>`).join('')}</tbody></table></div></details>${unclear}
-    <p class="hint">資格條件參考：${srcLinks(['law'])}。最後是否能加入，以業者與主管機關審查為準。</p>`;
+    ${C.deedDemo ? '<p class="hint">示範謄本為虛構資料。</p>' : ''}<p class="hint">資格條件參考：${srcLinks(['law'])}。最後是否能加入，以業者與主管機關審查為準。</p>`;
     updateAIState();
   }
 
-  /* ================= 步驟 4 ================= */
+  /* 步驟 4 */
   function drawCumChart(res) {
     const box = $('#cumChart');
-    const { svg, geo } = LD.charts.lineChartSVG(res, S.calc.mode, true);
+    const { svg, geo } = LD.charts.lineChartSVG(res, C.calc.mode, true, box.clientWidth || 640);
     box.innerHTML = svg + '<div class="tip" hidden></div>';
     const svgEl = box.querySelector('svg'), hit = box.querySelector('[data-role="hit"]'), xh = box.querySelector('[data-role="xh"]'), tip = box.querySelector('.tip');
     const show = ev => {
@@ -347,28 +574,26 @@
   }
   function renderCalc() {
     const t = totals();
-    $('#cRenoHint').innerHTML = S.calc.renoAuto
+    $('#cRenoHint').innerHTML = C.calc.renoAuto
       ? `使用修繕清單估計值（${wan(t.mid)}）`
-      : `已手動輸入。<button class="btn small ghost" type="button" id="btnRenoAuto">改用修繕清單估計值 ${wan(t.mid)}</button>`;
-    if (S.calc.renoAuto) $('#cReno').value = t.mid || 0;
-    $$('#modeSeg button').forEach(b => b.setAttribute('aria-checked', String(b.dataset.mode === S.calc.mode)));
-    $('#modeHint').textContent = S.calc.mode === '包租' ? '業者擔任二房東，每月付屋主市價 8 折，簽 3 年；空租風險由業者承擔。' : '屋主直接和房客簽約、租金市價 9 折，業者負責管理；空租期間沒有租金。';
-    const res = result();
-    const ready = calcReady();
-    $('#conclusion').textContent = ready ? conclusionText(res, S.calc.mode) : '填入房屋評定現值和整理後的市場月租，就會算出三條路的結果。';
+      : `已手動輸入。<button class="linklike" type="button" id="btnRenoAuto">改用修繕清單估計值 ${wan(t.mid)}</button>`;
+    if (C.calc.renoAuto) $('#cReno').value = t.mid || 0;
+    $$('#modeSeg button').forEach(b => b.setAttribute('aria-checked', String(b.dataset.mode === C.calc.mode)));
+    $('#modeHint').textContent = C.calc.mode === '包租' ? '業者擔任二房東，每月付屋主市價 8 折，簽 3 年；空租風險由業者承擔。' : '屋主直接和房客簽約、租金市價 9 折，業者負責管理；空租期間沒有租金。';
+    const res = result(), ready = calcReady();
+    $('#conclusion').textContent = ready ? conclusionText(res, C.calc.mode) : '填入下方的房屋評定現值和整理後月租，就會算出三條路的結果。';
     const best = rankPaths(res)[0].key;
     const card = p => {
       const bullets = p.key === 'vacant'
         ? [`房屋稅 ${pct(p.houseRate)}：每年 ${fmt(p.house)} 元`, `地價稅：每年 ${fmt(p.land)} 元`, '沒有租金收入']
         : p.key === 'self'
-          ? [`租金 ${fmt(S.calc.rent)} 元 × ${p.months} 個月`, `房屋稅 ${pct(p.houseRate)}、所得稅每年 ${fmt(p.income)} 元`, '自己找房客、收租、修繕']
+          ? [`租金 ${fmt(C.calc.rent)} 元 × ${p.months} 個月`, `房屋稅 ${pct(p.houseRate)}、所得稅每年 ${fmt(p.income)} 元`, '自己找房客、收租、修繕']
           : [`屋主每月實拿 ${fmt(p.monthly)} 元 × ${p.months} 個月`, `房屋稅 ${pct(p.houseRate)}、所得稅每年 ${fmt(p.income)} 元`, `修繕補助每年 ${fmt(p.subsidy)} 元，業者管理`];
-      const pay = p.payback ? `・約第 ${p.payback} 年回收整理費` : '';
       const isBest = ready && p.key === best;
       return `<div class="path${isBest ? ' best' : ''}" data-path="${p.key}">
       <div class="path-key"><i class="sw sw-${p.key}"></i>${esc(name(p.key))}${isBest ? '<span class="badge">十年最高</span>' : ''}</div>
-      <div class="big">${wan(p.total)}</div>
-      <div class="sub">每年 ${p.net >= 0 ? '+' : ''}${fmt(p.net)} 元${pay}</div>
+      <div class="big num">${wan(p.total)}</div>
+      <div class="sub">每年 ${p.net >= 0 ? '+' : ''}${fmt(p.net)} 元${p.payback ? `・約第 ${p.payback} 年回收整理費` : ''}</div>
       <ul>${bullets.map(b => `<li>${esc(b)}</li>`).join('')}</ul>
     </div>`;
     };
@@ -386,16 +611,16 @@
     renderRules(res);
   }
   function renderRules(res) {
-    const r = RULES[S.case.city];
-    const note = S.case.city === 'hsinchu'
+    const r = RULES[C.case.city];
+    const note = C.case.city === 'hsinchu'
       ? { vacant: '非自住住家用（全國歸戶）：1 戶 2.6%、2–4 戶 3.2%、5–6 戶 3.8%、7 戶以上 4.8%。新竹縣稅務局公布的範圍是 2.6%–4.8%，級距依財政部基準。', rent: '出租並申報租賃所得達當地一般租金標準（或繼承共有）：新竹縣 1.6%–2.4%；級距（4 戶以內、5–6 戶、7 戶以上）依財政部基準推定。', social: '社宅包租代管：特定房屋 1.6%，再依新竹縣自治條例減徵房屋稅額 25%，實質 1.2%。', src: { vacant: ['hcRent', 'mofBase'], rent: ['hcRent', 'mofBase'], social: ['hcSocial', 'hc2022'] } }
       : { vacant: '非自住住家用（全國歸戶）：2 戶以內 3.2%、3–4 戶 3.8%、5–6 戶 4.2%、7 戶以上 4.8%。', rent: '出租並申報租賃所得達租金標準（或繼承共有）：4 戶以內 1.5%、5–6 戶 2.0%、7 戶以上 2.4%。', social: '社宅包租代管：房屋稅率減徵為 1%。116 年期仍有稅基折減（實質 0.875%），試算從嚴取 1%。', src: { vacant: ['tpTax2'], rent: ['tpTax2', 'mofBase'], social: ['tpSocial', 'tpTable'] } };
     const rules = [
-      [`房屋稅・繼續空著：本案適用 ${pct(res.vacantRate)}${S.calc.inherited ? '（繼承共有）' : ''}`, S.calc.inherited ? note.rent : note.vacant, S.calc.inherited ? note.src.rent : note.src.vacant],
+      [`房屋稅・繼續空著：本案適用 ${pct(res.vacantRate)}${C.calc.inherited ? '（繼承共有）' : ''}`, C.calc.inherited ? note.rent : note.vacant, C.calc.inherited ? note.src.rent : note.src.vacant],
       [`房屋稅・自己出租：本案適用 ${pct(res.rentRate)}`, note.rent + ' 試算假設屋主誠實申報租金。', note.src.rent],
       [`房屋稅・社宅包租代管：本案適用 ${pct(res.socialRate)}`, note.social, note.src.social],
-      [`地價稅：一般 ${fmt(res.landGen)} 元／年；社宅包租代管 ${fmt(res.landSoc)} 元／年`, '一般用地基本稅率千分之十（假設未超過累進起點地價）；社宅包租代管減徵應納地價稅 80%。', S.case.city === 'hsinchu' ? ['hcSocial'] : ['tpSocial', 'tpTable']],
-      ['租金所得稅', `自己出租：租金扣除 43% 必要費用後，按屋主級距 ${pct(S.calc.bracket)} 計算。社宅包租代管：每屋每月 1.5 萬元以內免稅，超過部分扣除 60% 費用。`, ['ntbt', 'law']],
+      [`地價稅：一般 ${fmt(res.landGen)} 元／年；社宅包租代管 ${fmt(res.landSoc)} 元／年`, '一般用地基本稅率千分之十（假設未超過累進起點地價）；社宅包租代管減徵應納地價稅 80%。', C.case.city === 'hsinchu' ? ['hcSocial'] : ['tpSocial', 'tpTable']],
+      ['租金所得稅', `自己出租：租金扣除 43% 必要費用後，按屋主級距 ${pct(C.calc.bracket)} 計算。社宅包租代管：每屋每月 1.5 萬元以內免稅，超過部分扣除 60% 費用。`, ['ntbt', 'law']],
       ['社宅包租代管的補助與租金', `修繕費每年最高 1 萬元（實支實付）、包租另有居家安全保險費每年最高 3,500 元、公證費每件最高 ${fmt(r.notary)} 元；包租為市價 8 折、代管為市價 9 折。各縣市另有可加入的租金上限，以當期計畫公告為準。`, ['subsidy']],
       ['期限', '住宅法第 22、23 條的租稅優惠有五年實施年限，屆期前由行政院決定是否延長；行政院已核定包租代管計畫推動到民國 121 年。試算假設十年內優惠延續。', ['law', 'plan']]
     ];
@@ -403,274 +628,395 @@
       '<li><b>試算範圍</b><br>社區管理費三條路相同，未列入；所得稅以屋主目前級距估算，不考慮跳級；稅額以稅捐機關核定為準。</li>';
   }
 
-  /* ================= 步驟 5 ================= */
+  /* 步驟 5 */
   function renderConcerns() {
-    $('#concernChips').innerHTML = CONCERNS.map(c => `<button type="button" class="chip" data-concern="${esc(c)}" aria-pressed="${S.concerns.includes(c)}">${esc(c)}</button>`).join('');
-    if (!running.explain) $('#explainOut').textContent = S.explanation || '選好屋主的顧慮後，按「AI 白話說明」。';
+    $('#concernChips').innerHTML = CONCERNS.map(c => `<button type="button" class="chip" data-concern="${esc(c)}" aria-pressed="${C.concerns.includes(c)}">${esc(c)}</button>`).join('');
+    if (!running.explain) $('#explainOut').textContent = C.explanation || explainPlaceholder();
   }
   function renderReport() {
     const before = currentBefore();
-    $('#reportPreview').innerHTML = LD.report.reportHTML(view(), { before: before && before.url, after: S.after.afterUrl });
+    $('#reportPreview').innerHTML = LD.report.reportHTML(view(), { before: before && before.url, after: urlOf(C.after.afterId) });
   }
 
-  /* ================= 摘要與進度 ================= */
+  /* 摘要與步驟列 */
   function renderSummary() {
-    $('#sumCase').textContent = (S.case.addr || S.case.ping) ? caseTitle() : '尚未填寫';
-    const t = totals(), has = S.repairs.some(l => l.on);
+    const t = totals(), has = C.repairs.some(l => l.on);
     $('#sumReno').textContent = has ? wan(t.mid) : '—';
     $('#sumRenoRange').textContent = has ? `區間 ${wan(t.lo)}–${wan(t.hi)}` : '';
-    $('#sumBars').innerHTML = calcReady() ? LD.charts.barsHTML(result(), S.calc.mode) : '<span class="hint">填入稅單現值和月租後顯示</span>';
-    $('#sumNote').textContent = S.demo ? '示範案例的數字都是示範值。' : '';
+    $('#sumBars').innerHTML = calcReady() ? LD.charts.barsHTML(result(), C.calc.mode) : '<span class="hint">填入稅單現值和月租後顯示</span>';
+    $('#sumNote').textContent = C.demo ? '示範案例的數字都是示範值。' : '';
   }
-  function renderFacade() {
-    const done = { 1: S.repairs.some(l => l.on), 2: !!(currentBefore() && S.after.afterUrl), 3: !!S.deedFields, 4: calcReady(), 5: !!S.explanation };
+  function renderSteps() {
+    const done = { 1: C.repairs.some(l => l.on), 2: !!(currentBefore() && urlOf(C.after.afterId)), 3: !!C.deedFields, 4: calcReady(), 5: !!C.explanation || C.status !== 'visit' };
     $$('.win').forEach(w => {
       const n = Number(w.dataset.step);
       w.classList.toggle('done', !!done[n]);
-      if (n === S.step) w.setAttribute('aria-current', 'step'); else w.removeAttribute('aria-current');
-      w.setAttribute('aria-label', `步驟 ${n} ${w.querySelector('.lbl').textContent.replace(/^\d/, '')}${done[n] ? '（已完成）' : ''}`);
+      if (n === C.step) w.setAttribute('aria-current', 'step'); else w.removeAttribute('aria-current');
+      w.setAttribute('aria-label', `步驟 ${n} ${w.querySelector('.lbl').textContent}${done[n] ? '（已完成）' : ''}`);
     });
   }
-  function go(step) {
-    S.step = step;
+  function go(step, fromRoute) {
+    C.step = step;
     $$('[data-panel]').forEach(p => { p.hidden = Number(p.dataset.panel) !== step; });
-    renderFacade();
+    renderSteps();
+    if (step === 4) drawCumChart(result());   // 面板顯示後才量得到寬度
     if (step === 5) renderReport();
-    window.scrollTo({ top: 0, behavior: 'auto' });
-    saveDraft();
+    setHash(`#visit/${C.id}/${step}`, fromRoute);
+    window.scrollTo(0, 0);
+    if (!C.demo) scheduleSave();   // 記住停在哪一步（不算修改）
   }
-  function renderAll() {
-    renderHeader(); renderPhotos(); renderFindings(); renderRepairs(); renderStep2(); renderDeed(); renderCalc(); renderConcerns(); renderReport(); renderSummary(); renderFacade();
-    saveDraft();
+  function renderVisitAll() {
+    for (const id of ['#diagStatus', '#promptStatus', '#deedStatus', '#explainStatus', '#reportStatus', '#decideStatus']) setStatus(id, '');
+    $('#lineText').hidden = true;
+    fillInputs(); renderCaseHead(); renderPhotos(); renderFindings(); renderRepairs(); renderStep2(); renderDeed(); renderCalc(); renderConcerns(); renderSummary(); renderSteps();
   }
-  function refreshNumbers() { renderRepairs(); renderCalc(); renderSummary(); renderFacade(); if (S.step === 5) renderReport(); saveDraft(); }
+  function refreshNumbers() { renderRepairs(); renderCalc(); renderSummary(); renderSteps(); if (C.step === 5) renderReport(); touch(); }
+  function setCaseStatus(s) {
+    if (!P.STATUSES.some(x => x.key === s)) return;
+    C.status = s;
+    renderCaseHead(); renderSteps(); touch();
+  }
 
-  /* ================= AI 動作 ================= */
+  /* ================= AI 動作（結果寫回發出請求的那個案件） ================= */
+  function tracker(key, statusId) {
+    const c = C, ctl = new AbortController();
+    running[key] = ctl; setBusy(key, true);
+    return {
+      c, signal: ctl.signal,
+      here: () => c === C,
+      status(t, busy) { if (c === C) setStatus(statusId, t, busy); },
+      done() { running[key] = null; setBusy(key, false); }
+    };
+  }
   async function runDiagnosis() {
-    const photos = S.photos.filter(p => p.blob);
-    if (!photos.length) return;
-    const ctl = new AbortController(); running.diag = ctl; setBusy('diag', true);
-    setStatus('#diagStatus', `AI 正在看 ${photos.length} 張照片，通常要 20–60 秒…`, true);
+    const photos = C.photos.filter(p => BL[p.id]);
+    if (!photos.length || running.diag) return;
+    const t = tracker('diag', '#diagStatus'), c = t.c;
+    t.status(`AI 正在看 ${photos.length} 張照片，通常要 20–60 秒…`, true);
     const per = Math.max(1, platform.ai.maxImages);
     const results = [], overall = [];
     try {
       for (let i = 0; i < photos.length; i += per) {
         const batch = photos.slice(i, i + per);
-        if (photos.length > per) setStatus('#diagStatus', `AI 正在看第 ${i + 1}–${Math.min(photos.length, i + per)} 張，共 ${photos.length} 張…`, true);
-        const out = await platform.json(LD.prompts.diagPrompt(batch, i), { images: batch.map(p => p.blob), signal: ctl.signal });
+        if (photos.length > per) t.status(`AI 正在看第 ${i + 1}–${Math.min(photos.length, i + per)} 張，共 ${photos.length} 張…`, true);
+        const out = await platform.json(LD.prompts.diagPrompt(batch, i), { images: batch.map(p => BL[p.id].blob), signal: t.signal });
         const norm = LD.prompts.normalizeDiag(out, batch, i);
         results.push(...norm.photos);
         if (norm.overall) overall.push(norm.overall);
       }
-      S.diagnosis = { photos: results, overall: overall.join(' ') };
-      S.demo = false;
-      rebuildAutoRepairs();
-      const count = results.reduce((s, p) => s + p.findings.length, 0);
-      setStatus('#diagStatus', `完成：${results.length} 個空間，找到 ${count} 個待整理項目。`);
-      renderAll();
+      c.diagnosis = { photos: results, overall: overall.join(' ') };
+      c.repairs = autoLines(c.diagnosis).concat((c.repairs || []).filter(r => !r.auto));
+      markChanged(c);
+      t.status(`完成：${results.length} 個空間，找到 ${results.reduce((s, p) => s + p.findings.length, 0)} 個待整理項目。`);
+      if (t.here()) { renderFindings(); refreshNumbers(); renderStep2(); }
     } catch (e) {
-      setStatus('#diagStatus', aiError(e));
-    } finally {
-      running.diag = null; setBusy('diag', false);
-    }
+      t.status(aiError(e));
+    } finally { t.done(); }
   }
   async function runPrompt() {
     const before = currentBefore();
-    if (!before) return;
-    const diagPhoto = S.diagnosis && S.diagnosis.photos.find(p => p.photoId === before.id);
+    if (!before || running.prompt) return;
+    const t = tracker('prompt', '#promptStatus'), c = t.c;
+    const diagPhoto = c.diagnosis && c.diagnosis.photos.find(p => p.photoId === before.id);
     const room = before.room || (diagPhoto && diagPhoto.room) || '其他';
-    const ctl = new AbortController(); running.prompt = ctl; setBusy('prompt', true);
-    setStatus('#promptStatus', 'AI 正在看照片、寫改圖指令…', true);
+    t.status('AI 正在看照片、寫改圖指令…', true);
     try {
-      const out = await platform.json(LD.prompts.editPrompt(room, diagPhoto ? diagPhoto.findings : []), { images: [before.blob], signal: ctl.signal });
+      const out = await platform.json(LD.prompts.editPrompt(room, diagPhoto ? diagPhoto.findings : []), { images: [before.blob], signal: t.signal });
       const en = String((out && out.en) || '').trim(), zh = String((out && out.zh) || '').trim();
       if (!en) throw { code: 'invalid_json' };
-      S.after.prompt = { en: en.slice(0, 1200), zh: zh.slice(0, 200) };
-      setStatus('#promptStatus', '指令完成，複製後貼到影像生成工具。');
-      renderStep2(); saveDraft();
+      c.after.prompt = { en: en.slice(0, 1200), zh: zh.slice(0, 200) };
+      markChanged(c);
+      t.status('指令完成，複製後貼到影像生成工具。');
+      if (t.here()) renderStep2();
     } catch (e) {
-      setStatus('#promptStatus', aiError(e));
-    } finally {
-      running.prompt = null; setBusy('prompt', false);
-    }
+      t.status(aiError(e));
+    } finally { t.done(); }
   }
   async function runDeed() {
-    if (!S.deedBlob) return;
-    const ctl = new AbortController(); running.deed = ctl; setBusy('deed', true);
-    setStatus('#deedStatus', 'AI 正在讀謄本…', true);
+    const img = C.deedImgId && BL[C.deedImgId];
+    if (!img || running.deed) return;
+    const t = tracker('deed', '#deedStatus'), c = t.c;
+    t.status('AI 正在讀謄本…', true);
     try {
-      const out = await platform.json(LD.deed.DEED_PROMPT, { images: [S.deedBlob], signal: ctl.signal });
-      S.deedFields = LD.deed.normalizeDeed(out); S.deedDemo = false;
-      const yr = LD.deed.rocYear(S.deedFields['建築完成日期']);
-      if (yr) { S.case.age = new Date().getFullYear() - (yr + 1911); $('#fAge').value = S.case.age; }
-      setStatus('#deedStatus', '判讀完成，請對照謄本確認。');
-      renderAll();
+      const out = await platform.json(LD.deed.DEED_PROMPT, { images: [img.blob], signal: t.signal });
+      c.deedFields = LD.deed.normalizeDeed(out); c.deedDemo = false;
+      const yr = LD.deed.rocYear(c.deedFields['建築完成日期']);
+      if (yr) c.case.age = Math.max(0, new Date().getFullYear() - (yr + 1911));
+      markChanged(c);
+      t.status('判讀完成，請對照謄本確認。');
+      if (t.here()) { $('#fAge').value = c.case.age || ''; renderDeed(); renderCaseHead(); renderSteps(); }
     } catch (e) {
-      setStatus('#deedStatus', aiError(e));
-    } finally {
-      running.deed = null; setBusy('deed', false);
-    }
+      t.status(aiError(e));
+    } finally { t.done(); }
   }
   async function runExplain() {
+    if (running.explain) return;
     if (!calcReady()) { setStatus('#explainStatus', '請先在步驟 4 填入房屋評定現值和月租。'); return; }
-    const ctl = new AbortController(); running.explain = ctl; setBusy('explain', true);
+    const t = tracker('explain', '#explainStatus'), c = t.c;
     const out = $('#explainOut');
     out.textContent = '';
-    setStatus('#explainStatus', 'AI 正在整理說明…', true);
-    const concerns = S.concerns.slice();
-    if (S.concernText.trim()) concerns.push(S.concernText.trim().slice(0, 200));
-    const v = { title: caseTitle(), age: S.case.age, concerns, res: result(), totals: totals(), mode: S.calc.mode, notary: RULES[S.case.city].notary };
+    t.status('AI 正在整理說明…', true);
+    const concerns = c.concerns.slice();
+    if (c.concernText.trim()) concerns.push(c.concernText.trim().slice(0, 200));
+    const v = { title: caseTitle(c), age: c.case.age, concerns, res: result(c), totals: totals(c), mode: c.calc.mode, notary: RULES[c.case.city].notary };
     try {
       const { text, truncated } = await platform.text(LD.prompts.explainPrompt(v), {
-        signal: ctl.signal, cache: false,
-        onText: u => { out.textContent = u.text; setStatus('#explainStatus', 'AI 正在寫…', true); }
+        signal: t.signal, cache: false,
+        onText: u => { if (t.here()) { out.textContent = u.text; t.status('AI 正在寫…', true); } }
       });
-      S.explanation = text;
-      setStatus('#explainStatus', truncated ? '說明被截斷，可以再產生一次。' : '完成。已放進下方報告。');
-      renderReport(); renderFacade(); saveDraft();
+      c.explanation = String(text || '').slice(0, 3000);
+      markChanged(c);
+      t.status(truncated ? '說明被截斷，可以再產生一次。' : '完成，已放進下方報告。');
+      if (t.here()) { out.textContent = c.explanation; renderReport(); renderSteps(); }
     } catch (e) {
-      out.textContent = (e && e.text) || S.explanation || '';
-      setStatus('#explainStatus', aiError(e));
-    } finally {
-      running.explain = null; setBusy('explain', false);
-    }
+      if (t.here()) out.textContent = (e && e.text) || c.explanation || explainPlaceholder();
+      t.status(aiError(e));
+    } finally { t.done(); }
   }
 
-  /* ================= 報告下載與 LINE ================= */
+  /* ================= 報告 ================= */
+  function markReported() { if (C.status === 'visit') setCaseStatus('report'); }
   async function downloadReport() {
     const st = '#reportStatus';
     if (!platform.canSave()) { setStatus(st, '這個檢視不能下載檔案，請改用「複製 LINE 訊息」。'); return; }
     try {
       setStatus(st, '正在準備報告…', true);
-      const before = currentBefore();
-      const img = {};
-      if (before && S.after.afterBlob) { img.before = await blobToDataURL(before.blob); img.after = await blobToDataURL(S.after.afterBlob); }
+      const before = currentBefore(), after = BL[C.after.afterId];
       const v = view();
-      await platform.saveFile(LD.report.reportFilename(v), LD.report.reportDocument(v, img), LD.report.reportAsciiName(v));
+      await platform.saveFile(LD.report.reportFilename(v), LD.report.reportDocument(v, before && after ? { before: before.url, after: after.url } : {}), LD.report.reportAsciiName(v));
+      markReported();
       setStatus(st, '已下載。檔案可以直接用瀏覽器開啟，或用 LINE 傳給屋主。');
     } catch (e) {
       const c = e && e.code;
       setStatus(st, c === 'declined' ? '已取消下載。' : c === 'rate_limited' ? '已有一個下載視窗開著，請先處理它。' : '這個檢視不能下載檔案，請改用「複製 LINE 訊息」。');
     }
   }
-  function copyLine(btn) {
+  function copyLine() {
     const text = LD.report.lineMessage(view());
     const ta = $('#lineText');
     const fallback = () => { ta.hidden = false; ta.value = text; ta.focus(); ta.select(); setStatus('#reportStatus', '無法自動複製，訊息已選取，請手動複製。'); };
     try {
-      navigator.clipboard.writeText(text).then(() => {
-        setStatus('#reportStatus', '已複製 LINE 訊息，記得把下載的報告一起傳給屋主。');
-        btn.classList.add('flash'); setTimeout(() => btn.classList.remove('flash'), 1200);
-      }, fallback);
+      navigator.clipboard.writeText(text).then(() => { markReported(); setStatus('#reportStatus', '已複製 LINE 訊息，記得把下載的報告一起傳給屋主。'); }, fallback);
     } catch (e) { fallback(); }
   }
 
+  /* ================= 示範與導覽 ================= */
+  const openDemoAt = step => nav({ view: 'visit', id: LD.demo.DEMO_ID, step });
+  function resetDemo() {
+    const openId = C && C.demo ? C.id : null, step = openId ? C.step : 1;
+    if (openId) abortAll();
+    buildDemos();
+    if (!openId) return;
+    if (currentView === 'visit') { C = withRepairs(findCase(openId)); C.step = step; renderVisitAll(); go(step, true); }
+    else C = null;
+  }
+  function startTour() {
+    resetDemo();
+    const toCases = async () => {
+      if (!prefs.showDemo) { prefs.showDemo = true; store.savePrefs(prefs); }
+      listFilter = 'all';
+      await nav({ view: 'cases' });
+    };
+    LD.tour.start([
+      { before: () => nav({ view: 'intro' }), target: '[data-tour="hero"]', title: '每 10 戶，就有 1 戶的燈沒有亮', text: '全國 91 萬戶住宅一個月用不到 60 度電。政府估計其中 37.5 萬戶有機會轉成社宅包租代管，房子卻一直放不出來。' },
+      { target: '[data-tour="stats"]', title: '業者不缺，缺的是房源', text: '租賃住宅服務業者三年將近翻倍到 2,254 家；業界普遍認為，2026 年的關鍵是房東願不願意把房子交出來。' },
+      { target: '[data-tour="steps"]', title: '亮燈：一次拜訪，當場算給屋主看', text: '業務拜訪空屋屋主時，用手機完成五個步驟：屋主當場看懂三條路的差別，帶走一份能和家人討論的報告。' },
+      { before: toCases, target: '[data-tour="kpis"]', title: '業者端：每次拜訪都是一筆案件', text: '總覽統計拜訪、出報告到簽約的轉換，以及每簽一戶可申請的開發費。亮燈成交才收費，所以我們和業者看的是同一個數字。' },
+      { target: '[data-tour="caselist"]', title: '打開一個完整的示範案例', text: '接下來用竹北一間繼承的老公寓示範。屋主住台北，房子空了好幾年。' },
+      { before: () => openDemoAt(1), target: '[data-tour="photos"]', title: '步驟 1：拍照', text: '業務在現場每個空間拍一張。示範裡的照片是插圖，實際使用時直接用手機拍。' },
+      { target: '[data-tour="finds"]', title: 'AI 看出要整理的地方', text: 'AI 只能從固定的項目裡挑（壁癌、地板、浴室⋯），並寫出在照片哪裡看到；它不會自己編金額。' },
+      { target: '[data-tour="repairs"]', title: '修繕清單與估價', text: '金額由估價表計算，每一項都附來源；業務可以當場調整輕重、加入工班報價。這間估計約 22.6 萬。' },
+      { before: () => openDemoAt(2), target: '[data-tour="compare"]', title: '步驟 2：整理後的樣子', text: '拖曳中間的線。屋主看到的是自己的房子整理後的樣子，而不是別人的樣品屋。' },
+      { before: () => openDemoAt(3), target: '[data-tour="deed"]', title: '步驟 3：謄本初篩', text: '讀出主要用途、共有人數和屋齡，判斷能不能加入社宅包租代管、要準備哪些文件。' },
+      { before: () => openDemoAt(4), target: '[data-tour="paths"]', title: '步驟 4：三條路，十年算清楚', text: '繼續空著每年倒貼稅金；交給社宅包租，屋主每月實拿 1.44 萬、在免稅額內，十年比空著多出 150 萬以上。這一步完全由規則引擎計算，沒有用 AI。' },
+      { target: '[data-tour="chart"]', title: '每條規則都能追到來源', text: '房屋稅、地價稅、所得稅和補助都依縣市規則計算；下方列出這個案件用到的每一條規則與出處。' },
+      { before: () => openDemoAt(5), target: '[data-tour="report"]', title: '步驟 5：帶走一頁報告', text: 'AI 依屋主的顧慮，把算好的數字說成白話。報告可以下載，也能直接複製成 LINE 訊息轉給兄弟姊妹。' },
+      { target: '[data-tour="decide"]', title: '回到總覽，追蹤到簽約', text: '記下屋主的決定和下次追蹤日期，總覽的轉換率就會更新。這正是亮燈要證明的事：用了亮燈，簽約率更高。' }
+    ], () => {});
+  }
+
   /* ================= 事件 ================= */
-  function abortAll() { for (const k of Object.keys(running)) if (running[k]) running[k].abort(); }
+  async function addImage(file, prefix) {
+    const im = await prepImage(file), id = prefix + uid();
+    keepImage(id, im);
+    return { id, im };
+  }
   function bind() {
-    // 讓「加入照片」這類 label 按鈕可以用鍵盤操作
+    LD.tour.bind();
+    // label 形式的上傳按鈕可以用鍵盤操作
     $$('label.btn[for]').forEach(l => {
       const input = document.getElementById(l.htmlFor);
       if (!input || input.type !== 'file') return;
       l.tabIndex = 0; input.tabIndex = -1;
       l.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); input.click(); } });
     });
-    $$('.win').forEach(w => w.addEventListener('click', () => go(Number(w.dataset.step))));
-    $$('[data-go]').forEach(b => b.addEventListener('click', () => go(Number(b.dataset.go))));
-
-    let newArmed = null;
-    $('#btnNew').addEventListener('click', e => {
-      const b = e.currentTarget;
-      if (!newArmed) {
-        b.textContent = '確定清空？再按一次';
-        newArmed = setTimeout(() => { newArmed = null; b.textContent = '開新案件'; }, 4000);
+    document.addEventListener('click', e => {
+      const a = e.target.closest('[data-action]');
+      if (a) {
+        e.preventDefault();
+        if (a.dataset.action === 'new-case') newCase();
+        else if (a.dataset.action === 'tour') startTour();
+        else if (a.dataset.action === 'open-demo') openDemoAt(1);
         return;
       }
-      clearTimeout(newArmed); newArmed = null; b.textContent = '開新案件';
-      abortAll();
-      S = blankState();
-      fillInputs(); renderAll(); go(1);
-      ['#diagStatus', '#promptStatus', '#deedStatus', '#explainStatus', '#reportStatus'].forEach(id => setStatus(id, ''));
+      const link = e.target.closest('a[href^="#"]');
+      if (link && !e.defaultPrevented && !e.metaKey && !e.ctrlKey && !e.shiftKey) {
+        const h = link.getAttribute('href');
+        if (/^#(visit\/|cases$|intro$)/.test(h)) { e.preventDefault(); setHash(h); render(parseHash(h)); }
+      }
     });
-    $('#btnDemo').addEventListener('click', () => {
-      abortAll();
-      S = demoState(); rebuildAutoRepairs(); fillInputs(); renderAll(); go(1);
+    addEventListener('popstate', onHistory);
+    addEventListener('hashchange', onHistory);
+    addEventListener('pagehide', flush);
+    let resizeTimer = null, lastW = innerWidth;
+    addEventListener('resize', () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        if (innerWidth === lastW) return;   // 手機捲動時網址列伸縮只改高度
+        lastW = innerWidth;
+        if (currentView === 'visit' && C && C.step === 4) drawCumChart(result());
+      }, 150);
     });
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flush(); });
+
+    // 案件總覽
+    $('#statusFilter').addEventListener('click', e => { const b = e.target.closest('[data-filter]'); if (!b) return; listFilter = b.dataset.filter; renderCases(); });
+    $('#showDemo').addEventListener('change', e => { prefs.showDemo = e.target.checked; store.savePrefs(prefs); renderCases(); });
+    $('#btnExport').addEventListener('click', exportCSV);
+    $('#btnBackup').addEventListener('click', backup);
+    $('#restoreInput').addEventListener('change', e => { const f = e.target.files && e.target.files[0]; e.target.value = ''; if (f) restore(f); });
+    const list = $('#caseList');
+    let delArmed = null, delTimer = null;
+    list.addEventListener('click', e => {
+      const del = e.target.closest('[data-del]');
+      if (del) {
+        const id = del.dataset.del;
+        if (delArmed !== id) {
+          delArmed = id; del.textContent = '確定刪除？'; del.classList.add('danger');
+          clearTimeout(delTimer); delTimer = setTimeout(() => { delArmed = null; if (currentView === 'cases') renderCases(); }, 4000);
+          return;
+        }
+        delArmed = null; clearTimeout(delTimer);
+        userCases = userCases.filter(c => c.id !== id);
+        persist(); store.deletePrefix(id + '/');
+        if (C && C.id === id) C = null;
+        renderCases();
+        setStatus('#casesStatus', '已刪除案件。');
+        return;
+      }
+      if (e.target.closest('select,label,button')) return;
+      const row = e.target.closest('[data-open]');
+      if (row) { e.preventDefault(); openCase(row.dataset.open); }
+    });
+    list.addEventListener('change', e => {
+      const id = e.target.dataset.statusOf;
+      const c = id && findCase(id);
+      if (!c || !P.STATUSES.some(x => x.key === e.target.value)) return;
+      c.status = e.target.value;
+      if (!c.demo) { c.updatedAt = stamp(); persist(); }
+      renderCases();
+    });
+    $('#followList').addEventListener('click', e => { const a = e.target.closest('[data-open]'); if (a) { e.preventDefault(); openCase(a.dataset.open, Number(a.dataset.step) || 5); } });
+    const feeInput = () => {
+      const n = id => Math.max(0, Number($(id).value) || 0);
+      prefs.fees = { devFee: { '包租': n('#feeLease'), '代管': n('#feeManage') }, serviceFee: n('#feeService') };
+      store.savePrefs(prefs);
+      $('#kpis').innerHTML = kpisHTML(P.pipelineStats(allCases(), fees()));
+    };
+    ['#feeLease', '#feeManage', '#feeService'].forEach(id => $(id).addEventListener('input', feeInput));
+
+    // 拜訪：步驟切換與狀態
+    $$('.win').forEach(w => w.addEventListener('click', () => go(Number(w.dataset.step))));
+    $$('[data-go]').forEach(b => b.addEventListener('click', () => go(Number(b.dataset.go))));
+    $('#caseStatus').addEventListener('change', e => setCaseStatus(e.target.value));
+    $('#decideRow').addEventListener('click', e => {
+      const b = e.target.closest('[data-status]');
+      if (!b) return;
+      setCaseStatus(b.dataset.status);
+      setStatus('#decideStatus', `已記錄為「${STATUS[b.dataset.status].label}」。${C.demo ? '示範案件不會保存。' : '案件總覽的轉換率會一起更新。'}`);
+    });
+    $('#followUp').addEventListener('input', e => { C.followUp = /^\d{4}-\d{2}-\d{2}$/.test(e.target.value) ? e.target.value : ''; touch(); });
+    $('#caseNote').addEventListener('input', e => { C.note = e.target.value.slice(0, 120); touch(); });
+    $('#btnResetDemo').addEventListener('click', resetDemo);
 
     // 步驟 1：基本資料
     const caseMap = { fCity: 'city', fAddr: 'addr', fPing: 'ping', fAge: 'age', fRooms: 'rooms', fHalls: 'halls', fBaths: 'baths', fKwh: 'kwh' };
     for (const [id, key] of Object.entries(caseMap)) {
       $('#' + id).addEventListener('input', e => {
         const el = e.target, n = Number(el.value);
-        if (key === 'city' || key === 'addr') S.case[key] = el.value;
-        else if (key === 'kwh') S.case.kwh = el.value === '' ? '' : Math.max(0, Number.isFinite(n) ? n : 0);
-        else S.case[key] = Math.max(0, Number.isFinite(n) ? n : 0);
-        renderHeader(); refreshNumbers();
+        if (key === 'city') C.case.city = el.value === 'taipei' ? 'taipei' : 'hsinchu';
+        else if (key === 'addr') C.case.addr = el.value.slice(0, 80);
+        else if (key === 'kwh') C.case.kwh = el.value === '' ? '' : Math.max(0, Number.isFinite(n) ? n : 0);
+        else C.case[key] = Math.max(0, Number.isFinite(n) ? n : 0);
+        renderCaseHead(); refreshNumbers();
       });
     }
     $('#photoInput').addEventListener('change', async e => {
       const files = Array.from(e.target.files || []);
       e.target.value = '';
       if (!files.length) return;
-      if (S.demo) { S = blankState(); fillInputs(); }
+      const c = C;
       setStatus('#diagStatus', `正在處理 ${files.length} 張照片…`, true);
       let bad = 0;
       for (const f of files) {
         try {
-          const im = await prepImage(f);
-          S.photos.push({ id: uid(), room: guessRoom(S.photos.length), blob: im.blob, url: im.url, w: im.w, h: im.h });
+          const { id, im } = await addImage(f, 'p');
+          c.photos.push({ id, room: guessRoom(c.photos.length), w: im.w, h: im.h });
         } catch (err) { bad++; }
       }
-      S.photos = S.photos.filter(p => p.blob || !p.lost);
-      const canAI = platform.ai.text && platform.ai.images && !AI.blocked;
+      markChanged(c);
+      if (c !== C) return;
+      const canAI = aiText() && platform.ai.images;
       setStatus('#diagStatus', bad ? `${bad} 張照片無法讀取，請改用 JPG 或 PNG。` : (canAI ? '照片已加入。確認每張的空間後，按「AI 診斷照片」。' : '照片已加入。'));
-      renderAll();
+      renderPhotos(); renderStep2(); renderSteps();
     });
     $('#photoGrid').addEventListener('change', e => {
       const id = e.target.dataset.room;
-      if (!id) return;
-      const p = photoById(id); if (p) p.room = e.target.value;
-      saveDraft();
+      const p = id && photoById(id);
+      if (!p || !ROOMS.includes(e.target.value)) return;
+      p.room = e.target.value;
+      touch();
     });
     $('#photoGrid').addEventListener('click', e => {
-      const id = e.target.dataset && e.target.dataset.del;
-      if (!id) return;
-      S.photos = S.photos.filter(p => p.id !== id);
-      if (S.after.photoId === id) S.after.photoId = null;
-      renderPhotos(); renderStep2(); renderFindings(); saveDraft();
+      const b = e.target.closest('[data-del]');
+      if (!b) return;
+      const id = b.dataset.del;
+      C.photos = C.photos.filter(p => p.id !== id);
+      if (C.after.photoId === id) C.after.photoId = null;
+      renderPhotos(); renderStep2(); renderFindings(); renderSteps(); touch();
     });
     $('#btnDiag').addEventListener('click', runDiagnosis);
     $('#btnDiagStop').addEventListener('click', () => running.diag && running.diag.abort());
 
     // 修繕清單
     const rl = $('#repairList');
+    const lineOf = key => C.repairs.find(l => l.key === key);
     rl.addEventListener('change', e => {
       const t = e.target, d = t.dataset;
-      const find = key => S.repairs.find(l => l.key === key);
-      if (d.on) { const l = find(d.on); if (l) l.on = t.checked; }
-      else if (d.tier) { const l = find(d.tier); if (l) l.tier = t.value; }
-      else if (d.qty) { const l = find(d.qty); if (l) l.qty = clampInt(t.value, 1, 1, 20); }
+      if (d.on) { const l = lineOf(d.on); if (l) l.on = t.checked; }
+      else if (d.tier) { const l = lineOf(d.tier); if (l && ['輕', '中', '重'].includes(t.value)) l.tier = t.value; }
+      else if (d.qty) { const l = lineOf(d.qty); if (l) l.qty = clampInt(t.value, 1, 1, 20); }
       else return;
       refreshNumbers();
     });
     rl.addEventListener('click', e => {
-      const k = e.target.dataset && e.target.dataset.rm;
-      if (!k) return;
-      S.repairs = S.repairs.filter(l => l.key !== k);
+      const b = e.target.closest('[data-rm]');
+      if (!b) return;
+      C.repairs = C.repairs.filter(l => l.key !== b.dataset.rm);
       refreshNumbers();
     });
     $('#quickAdd').addEventListener('click', e => {
-      const id = e.target.dataset && e.target.dataset.add;
-      if (!id) return;
-      const it = CATALOG[id];
-      S.repairs.push({ key: uid(), id, auto: false, on: true, qty: 1, tier: it.tiers ? '中' : undefined, detail: '手動加入' });
+      const b = e.target.closest('[data-add]');
+      const it = b && Object.prototype.hasOwnProperty.call(CATALOG, b.dataset.add) && CATALOG[b.dataset.add];
+      if (!it) return;
+      C.repairs.push({ key: uid(), id: b.dataset.add, auto: false, on: true, qty: 1, tier: it.tiers ? '中' : undefined, detail: '手動加入' });
       refreshNumbers();
     });
     $('#customForm').addEventListener('submit', e => {
       e.preventDefault();
       const nm = $('#customName').value.trim(), amt = Number($('#customAmt').value);
       if (!nm || !(amt > 0)) return;
-      S.repairs.push({ key: uid(), id: 'custom', name: nm.slice(0, 40), amount: Math.round(amt), auto: false, on: true, detail: '自訂' });
+      C.repairs.push({ key: uid(), id: 'custom', name: nm.slice(0, 40), amount: Math.min(1e8, Math.round(amt)), auto: false, on: true, detail: '自訂' });
       $('#customName').value = ''; $('#customAmt').value = '';
       refreshNumbers();
     });
@@ -678,34 +1024,30 @@
     // 步驟 2
     $('#chooseList').addEventListener('change', e => {
       if (e.target.name !== 'before') return;
-      S.after.photoId = e.target.value;
-      S.after.prompt = null;
-      renderStep2(); renderReport(); renderFacade();
+      C.after.photoId = e.target.value; C.after.prompt = null;
+      renderStep2(); renderSteps(); touch();
     });
     $('#beforeInput').addEventListener('change', async e => {
       const f = e.target.files && e.target.files[0]; e.target.value = '';
       if (!f) return;
       try {
-        const im = await prepImage(f);
-        S.after.ownBefore = { blob: im.blob, url: im.url, w: im.w, h: im.h, room: '其他', id: '__own' };
-        S.after.photoId = '__own'; S.after.prompt = null;
+        const { id, im } = await addImage(f, 'b');
+        C.after.ownBefore = { id, w: im.w, h: im.h }; C.after.photoId = '__own'; C.after.prompt = null;
         setStatus('#promptStatus', '');
       } catch (err) { setStatus('#promptStatus', '這張照片無法讀取，請改用 JPG 或 PNG。'); }
-      renderStep2(); renderFacade();
+      renderStep2(); renderSteps(); touch();
     });
     $('#afterInput').addEventListener('change', async e => {
       const f = e.target.files && e.target.files[0]; e.target.value = '';
       if (!f) return;
-      try {
-        const im = await prepImage(f);
-        S.after.afterBlob = im.blob; S.after.afterUrl = im.url;
-      } catch (err) { setStatus('#promptStatus', '這張圖片無法讀取，請改用 JPG 或 PNG。'); }
-      renderStep2(); renderFacade(); renderReport();
+      try { C.after.afterId = (await addImage(f, 'a')).id; }
+      catch (err) { setStatus('#promptStatus', '這張圖片無法讀取，請改用 JPG 或 PNG。'); }
+      renderStep2(); renderSteps(); touch();
     });
     $('#btnPrompt').addEventListener('click', runPrompt);
     $('#btnPromptStop').addEventListener('click', () => running.prompt && running.prompt.abort());
     $('#btnCopyPrompt').addEventListener('click', () => {
-      const text = S.after.prompt ? S.after.prompt.en : '';
+      const text = C.after.prompt ? C.after.prompt.en : '';
       const fb = () => { const r = document.createRange(); r.selectNodeContents($('#promptEn')); const s = getSelection(); s.removeAllRanges(); s.addRange(r); setStatus('#promptStatus', '已選取指令，請手動複製。'); };
       try { navigator.clipboard.writeText(text).then(() => setStatus('#promptStatus', '已複製英文指令。'), fb); } catch (err) { fb(); }
     });
@@ -715,52 +1057,52 @@
       const f = e.target.files && e.target.files[0]; e.target.value = '';
       if (!f) return;
       try {
-        const im = await prepImage(f);
-        S.deedBlob = im.blob; S.deedUrl = im.url;
-        if (S.deedDemo) { S.deedFields = null; S.deedDemo = false; }
-        const canAI = platform.ai.text && platform.ai.images && !AI.blocked;
-        setStatus('#deedStatus', canAI ? '謄本已上傳，按「AI 判讀謄本」。' : '謄本已上傳。');
+        C.deedImgId = (await addImage(f, 'd')).id;
+        if (C.deedDemo) { C.deedFields = null; C.deedDemo = false; }
+        setStatus('#deedStatus', aiText() && platform.ai.images ? '謄本已上傳，按「AI 判讀謄本」。' : '謄本已上傳。');
       } catch (err) { setStatus('#deedStatus', '這張照片無法讀取，請改用 JPG 或 PNG。'); }
-      renderDeed(); renderFacade();
+      renderDeed(); renderSteps(); touch();
     });
     $('#btnDeed').addEventListener('click', runDeed);
     $('#btnDeedStop').addEventListener('click', () => running.deed && running.deed.abort());
 
     // 步驟 4
-    const calcMap = { cHouse: 'houseValue', cLand: 'landValue', cCount: 'count', cRent: 'rent', cVac: 'vacancy', cAgent: 'agentMonths', cMaint: 'maint' };
-    for (const [id, key] of Object.entries(calcMap)) {
-      $('#' + id).addEventListener('input', e => { const n = Number(e.target.value); S.calc[key] = Math.max(0, Number.isFinite(n) ? n : 0); refreshNumbers(); });
+    const calcMap = { cHouse: ['houseValue', 1e10], cLand: ['landValue', 1e11], cCount: ['count', 50], cRent: ['rent', 1e7], cVac: ['vacancy', 11], cAgent: ['agentMonths', 3], cMaint: ['maint', 1e7] };
+    for (const [id, [key, max]] of Object.entries(calcMap)) {
+      $('#' + id).addEventListener('input', e => {
+        const n = Number(e.target.value);
+        C.calc[key] = Math.min(max, Math.max(key === 'count' ? 1 : 0, Number.isFinite(n) ? n : 0));
+        refreshNumbers();
+      });
     }
-    $('#cBracket').addEventListener('change', e => { S.calc.bracket = Number(e.target.value); refreshNumbers(); });
-    $('#cInherited').addEventListener('change', e => { S.calc.inherited = e.target.checked; refreshNumbers(); });
-    $('#cReno').addEventListener('input', e => { const n = Number(e.target.value); S.calc.renoAuto = false; S.calc.reno = Math.max(0, Number.isFinite(n) ? n : 0); refreshNumbers(); });
-    $('#cRenoHint').addEventListener('click', e => { if (e.target.id === 'btnRenoAuto') { S.calc.renoAuto = true; refreshNumbers(); } });
-    $('#modeSeg').addEventListener('click', e => { const m = e.target.dataset && e.target.dataset.mode; if (!m) return; S.calc.mode = m; refreshNumbers(); });
+    $('#cBracket').addEventListener('change', e => { C.calc.bracket = Number(e.target.value); refreshNumbers(); });
+    $('#cInherited').addEventListener('change', e => { C.calc.inherited = e.target.checked; refreshNumbers(); });
+    $('#cReno').addEventListener('input', e => { const n = Number(e.target.value); C.calc.renoAuto = false; C.calc.reno = Math.min(1e9, Math.max(0, Number.isFinite(n) ? n : 0)); refreshNumbers(); });
+    $('#cRenoHint').addEventListener('click', e => { if (e.target.id === 'btnRenoAuto') { C.calc.renoAuto = true; refreshNumbers(); } });
+    $('#modeSeg').addEventListener('click', e => { const b = e.target.closest('[data-mode]'); if (!b) return; C.calc.mode = b.dataset.mode === '代管' ? '代管' : '包租'; refreshNumbers(); });
 
     // 步驟 5
     $('#concernChips').addEventListener('click', e => {
-      const c = e.target.dataset && e.target.dataset.concern;
-      if (!c) return;
-      S.concerns = S.concerns.includes(c) ? S.concerns.filter(x => x !== c) : S.concerns.concat(c);
-      e.target.setAttribute('aria-pressed', String(S.concerns.includes(c)));
-      saveDraft();
+      const b = e.target.closest('[data-concern]');
+      if (!b) return;
+      const c = b.dataset.concern;
+      C.concerns = C.concerns.includes(c) ? C.concerns.filter(x => x !== c) : C.concerns.concat(c);
+      b.setAttribute('aria-pressed', String(C.concerns.includes(c)));
+      touch();
     });
-    $('#concernText').addEventListener('input', e => { S.concernText = e.target.value; saveDraft(); });
+    $('#concernText').addEventListener('input', e => { C.concernText = e.target.value.slice(0, 200); touch(); });
     $('#btnExplain').addEventListener('click', runExplain);
     $('#btnExplainStop').addEventListener('click', () => running.explain && running.explain.abort());
     $('#btnDownload').addEventListener('click', downloadReport);
-    $('#btnLine').addEventListener('click', e => copyLine(e.currentTarget));
+    $('#btnLine').addEventListener('click', copyLine);
   }
 
   /* ================= 啟動 ================= */
   const style = document.createElement('style'); style.textContent = LD.report.REPORT_CSS; document.head.appendChild(style);
-  const draft = loadDraft();
-  if (draft) S = draft;
   renderBasis();
   bind();
-  fillInputs();
-  renderAll();
-  const m = String(location.hash || '').match(/^#step([1-5])$/);
-  go(m ? Number(m[1]) : (S.step || 1));
+  shownHash = location.hash;
+  render(parseHash());
   platform.init().then(() => { AI.checked = true; updateAIState(); });
+  LD.app = { startTour, nav };   // 給測試與除錯用
 })(globalThis.LD);
