@@ -131,3 +131,10 @@ test('畫面上的結論句：數字和單位不會被拆到兩行', () => {
   assert.equal(LD.util.glue('房屋稅 2.6% 起'), '房屋稅\u00a02.6%\u00a0起');
   assert.equal(LD.util.glue('損失 -17.7 萬'), '損失\u00a0-17.7\u00a0萬');
 });
+
+test('iPhone Safari 換行點：中文標點後加零寬空白，句尾和連續標點不加', () => {
+  assert.equal(LD.util.softBreak('卡住屋主的，是一筆帳。'), '卡住屋主的，\u200b是一筆帳。');
+  assert.equal(LD.util.softBreak('「我再想想」。好'), '「我再想想」。\u200b好');
+  assert.equal(LD.util.softBreak(LD.util.softBreak('甲，乙')), '甲，\u200b乙');
+  assert.equal(LD.util.phrase('約 142 萬，比空著多 159 萬。'), '約\u00a0142\u00a0萬，\u200b比空著多\u00a0159\u00a0萬。');
+});

@@ -18,7 +18,7 @@
 
 - 字體只用思源黑體（Noto Sans TC）及系統備援，不要再加其他字體。
 - 動效放在 `js/motion.js`，一律尊重「減少動態效果」（`LD.motion.reduced()` 與 CSS 的 `prefers-reduced-motion`）。端到端測試用 `reducedMotion: 'reduce'` 執行。
-- 中文的標題、導言、結論用 `word-break: keep-all` 只在標點換行；動態產生的句子先經過 `LD.util.glue` 把數字和單位黏住。
+- 中文的標題、導言、結論用 `word-break: keep-all` 只在標點換行。iPhone Safari 在 keep-all 時不會自己在中文標點後換行，所以標點後要有零寬空白：靜態文字由 `app.js` 啟動時的 `LD.util.softBreaks` 處理，動態產生的句子用 `LD.util.phrase`（同時把數字和單位黏住）。加了 keep-all 的元素也要加 `overflow-wrap: anywhere` 當保險。
 - 開場街景 `LD.intro.street()` 是純函式：100 戶、10 戶沒亮燈、群組標籤成對，由 `test/unit/demo.test.js` 把關。改了房子或暗窗，10 戶要留在橫座標 270–930 之間（手機會裁掉兩側）。
 
 ## 指令

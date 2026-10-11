@@ -207,7 +207,7 @@
     return `
       <div class="kpi"><span>拜訪</span><b class="num">${s.visits}<small>戶</small></b><em>進行中 ${s.openCases} 戶</em></div>
       <div class="kpi"><span>已出報告</span><b class="num">${s.reported}<small>戶</small></b><em>出報告率 ${Math.round(s.reportRate * 100)}%</em></div>
-      <div class="kpi"><span>已簽約</span><b class="num">${s.signed}<small>戶</small></b><em>簽約率\u00a0${Math.round(s.signRate * 100)}%，已決定的\u00a0${s.decided}\u00a0戶成交\u00a0${Math.round(s.closeRate * 100)}%</em></div>
+      <div class="kpi"><span>已簽約</span><b class="num">${s.signed}<small>戶</small></b><em>簽約率\u00a0${Math.round(s.signRate * 100)}%，\u200b已決定的\u00a0${s.decided}\u00a0戶成交\u00a0${Math.round(s.closeRate * 100)}%</em></div>
       <div class="kpi lit"><span>預估開發費收入</span><b class="num">${fmt(s.devIncome)}<small>元</small></b><em>亮燈服務費 ${fmt(s.serviceIncome)} 元</em></div>`;
   }
   function renderCases() {
@@ -401,7 +401,7 @@
     $('#casePing').textContent = pingText();
     $('#demoChip').hidden = !C.demo;
     $('#demoBanner').hidden = !C.demo;
-    $('#demoText').textContent = LD.util.glue(C.id === LD.demo.DEMO_ID
+    $('#demoText').textContent = LD.util.phrase(C.id === LD.demo.DEMO_ID
       ? '示範案例：竹北 25 坪、屋齡 32 年的繼承老公寓。照片是示意插圖，金額為示範值；在這裡的修改不會保存。'
       : '示範案件：只有基本資料和試算條件，金額為示範值；在這裡的修改不會保存。');
     $('#caseStatus').innerHTML = STATUSES.map(s => `<option value="${s.key}"${s.key === C.status ? ' selected' : ''}>${s.label}</option>`).join('');
@@ -573,7 +573,7 @@
     $$('#modeSeg button').forEach(b => b.setAttribute('aria-checked', String(b.dataset.mode === C.calc.mode)));
     $('#modeHint').textContent = C.calc.mode === '包租' ? '業者擔任二房東，每月付屋主市價 8 折，簽 3 年；空租風險由業者承擔。' : '屋主直接和房客簽約、租金市價 9 折，業者負責管理；空租期間沒有租金。';
     const res = result(), ready = calcReady();
-    $('#conclusion').textContent = ready ? LD.util.glue(conclusionText(res, C.calc.mode)) : '填入下方的房屋評定現值和整理後月租，就會算出三條路的結果。';
+    $('#conclusion').textContent = ready ? LD.util.phrase(conclusionText(res, C.calc.mode)) : '填入下方的房屋評定現值和整理後月租，就會算出三條路的結果。';
     const best = rankPaths(res)[0].key;
     const card = p => {
       const bullets = p.key === 'vacant'
@@ -585,7 +585,7 @@
       return `<div class="path${isBest ? ' best' : ''}" data-path="${p.key}">
       <div class="path-key"><i class="sw sw-${p.key}"></i>${esc(name(p.key))}${isBest ? '<span class="badge">十年最高</span>' : ''}</div>
       <div class="big num">${wan(p.total)}</div>
-      <div class="sub">每年\u00a0${p.net >= 0 ? '+' : ''}${fmt(p.net)}\u00a0元${p.payback ? `，約第\u00a0${p.payback}\u00a0年回收整理費` : ''}</div>
+      <div class="sub">每年\u00a0${p.net >= 0 ? '+' : ''}${fmt(p.net)}\u00a0元${p.payback ? `，\u200b約第\u00a0${p.payback}\u00a0年回收整理費` : ''}</div>
       <ul>${bullets.map(b => `<li>${esc(b)}</li>`).join('')}</ul>
     </div>`;
     };
@@ -1112,6 +1112,8 @@
 
   /* ================= 啟動 ================= */
   const style = document.createElement('style'); style.textContent = LD.report.REPORT_CSS; document.head.appendChild(style);
+  // iPhone Safari：中文標題與導言只在標點換行
+  LD.util.softBreaks(document, 'h1,h2,h3,.hero-sub,.voice p,.meter-card figcaption,.lede,.how-cap,.stat-text,.mock-note');
   renderBasis();
   bind();
   shownHash = location.hash;

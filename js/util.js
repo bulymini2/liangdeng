@@ -21,6 +21,22 @@
   /** 畫面上的句子：數字和前後的字用不換行空白黏住（「約 142 萬」不會拆成兩行），搭配 word-break: keep-all 只在標點換行 */
   const glue = t => String(t).replace(/ (?=[-+]?\d)/g, '\u00a0').replace(/(\d%?) /g, '$1\u00a0');
 
+  /** 標點後面加零寬空白：iPhone 的 Safari 在 word-break: keep-all 時不會自己在中文標點後換行，要明確給它換行點 */
+  const PUNCT = /([，。、；：！？」』）])(?=[^\s，。、；：！？」』）\u200b])/g;
+  const softBreak = t => String(t).replace(PUNCT, '$1\u200b');
+  /** 畫面上的中文句子：數字黏住、只在標點換行 */
+  const phrase = t => softBreak(glue(t));
+  /** 對頁面上已經寫好的文字做同樣處理（只改文字節點） */
+  function softBreaks(root, selector) {
+    root.querySelectorAll(selector).forEach(el => {
+      const walk = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+      for (let n = walk.nextNode(); n; n = walk.nextNode()) {
+        const v = softBreak(n.nodeValue);
+        if (v !== n.nodeValue) n.nodeValue = v;
+      }
+    });
+  }
+
   /** 0.026 → "2.6%" */
   const pct = r => (Math.round(r * 10000) / 100) + '%';
 
@@ -45,5 +61,5 @@
     }).join('、');
   }
 
-  LD.util = { esc, fmt, wan, pct, glue, clampInt, today, uid, hrefOf, srcLinks };
+  LD.util = { esc, fmt, wan, pct, glue, softBreak, phrase, softBreaks, clampInt, today, uid, hrefOf, srcLinks };
 })(globalThis.LD = globalThis.LD || {});
