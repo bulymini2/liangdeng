@@ -9,10 +9,25 @@
 | 方式 | AI 功能 | 適合 |
 | --- | --- | --- |
 | Claude 線上原型（擁有者分享連結） | 可以用 | Demo、業者實際試用 |
+| GitHub Pages 網站 `https://bulymini2.github.io/liangdeng/` | 不能用（顯示提示） | 任何手機直接打開、給評審或業者先看 |
 | 下載這個 repo，雙擊 `index.html` | 不能用（顯示提示） | 改程式、看試算 |
 | `npm run build` 後的 `dist/liangdeng.html` | 不能用 | 傳單一檔案給別人看 |
 
 不用安裝任何東西就能開。GitHub 上按 **Code → Download ZIP**，解壓縮後雙擊 `index.html` 即可。
+
+### 開成網站（GitHub Pages，只要設定一次）
+
+1. 在 repo 頁面按 **Settings → Pages**。
+2. **Build and deployment** 的 Source 選 **Deploy from a branch**，Branch 選 **main**、資料夾選 **/ (root)**，按 **Save**。
+3. 等 1–2 分鐘，頁面上方會出現網址 `https://bulymini2.github.io/liangdeng/`。之後每次推送到 main，網站會自動更新。
+
+repo 根目錄的 `.nojekyll` 讓 GitHub 直接提供檔案、不經過 Jekyll 轉換。
+
+### 用 iPhone 看
+
+用 Safari 打開上面任一個網址即可（Claude 線上原型要先登入 Claude 帳號）。想像 App 一樣用，可以按分享按鈕 →「加入主畫面」。
+
+注意：案件存在**那支手機、那個網址**的瀏覽器裡，Claude 線上原型和 GitHub Pages 的資料不互通；Safari 也可能清掉一段時間（約 7 天）沒打開的網站資料。試用期間請定期在「案件總覽 → 備份與還原」下載備份。
 
 ## 畫面
 
