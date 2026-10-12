@@ -1,0 +1,564 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<!-- build:head -->
+<title>亮燈業者後台</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500&family=Noto+Serif+TC:wght@500&display=swap">
+<style>
+/* 版面：深紫側欄＋淺紫灰工作區；標題與大數字用明體、內文用黑體；香檳金只標「錢」和「最好的選擇」。
+   參考：夏木樂為永豐「璀璨豐享信託」做的高端金融活動頁（深紫、香檳金、明體標題、8px 圓角）。不用粗體，最粗 500。 */
+:root{
+  --bg:#F6F3F7; --surface:#FFFFFF; --surface-2:#F1EAF6; --ink:#2A2230; --ink-2:#55495E; --muted:#73687B;
+  --line:#E6DEEB; --line-2:#D5C9DD;
+  --plum:#503766; --plum-hover:#3F2B52; --plum-soft:#EFE7F5; --on-plum:#FFFFFF;
+  --side:#392748; --side-ink:#EDE4F3; --side-mute:#B9A9C6; --side-active:#4C3660;
+  --gold:#EBD79D; --gold-ink:#86661C; --gold-line:#D6BC74; --gold-soft:#FBF5E4;
+  --good:#2F7D5B; --good-soft:#E3F2EA; --info:#3B5BA9; --info-soft:#E7ECF8; --warn:#9A5B0E; --warn-soft:#FBEEDC; --idle:#6F6676; --idle-soft:#EFECF1;
+  --shadow:0 1px 2px rgba(57,39,72,.05),0 10px 30px -18px rgba(57,39,72,.28);
+  --serif:"Noto Serif TC","Noto Serif CJK TC","Songti TC","PMingLiU",serif;
+  --sans:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+  --r:8px;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#151018; --surface:#1F1824; --surface-2:#2A2131; --ink:#F1EAF6; --ink-2:#CFC3D8; --muted:#A99DB2;
+  --line:#352B3D; --line-2:#463A50;
+  --plum:#7A5A99; --plum-hover:#8C6BAA; --plum-soft:#2E2338; --on-plum:#FFFFFF;
+  --side:#211829; --side-ink:#EDE4F3; --side-mute:#A797B5; --side-active:#35284A;
+  --gold:#EBD79D; --gold-ink:#E6CF8C; --gold-line:#B79A55; --gold-soft:#2E2718;
+  --good:#6CC9A1; --good-soft:#15302A; --info:#93ACEB; --info-soft:#1C2540; --warn:#F0B566; --warn-soft:#35260F; --idle:#B3A9BB; --idle-soft:#2A2430;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 12px 30px -16px rgba(0,0,0,.7);
+  color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#151018; --surface:#1F1824; --surface-2:#2A2131; --ink:#F1EAF6; --ink-2:#CFC3D8; --muted:#A99DB2;
+  --line:#352B3D; --line-2:#463A50;
+  --plum:#7A5A99; --plum-hover:#8C6BAA; --plum-soft:#2E2338; --on-plum:#FFFFFF;
+  --side:#211829; --side-ink:#EDE4F3; --side-mute:#A797B5; --side-active:#35284A;
+  --gold:#EBD79D; --gold-ink:#E6CF8C; --gold-line:#B79A55; --gold-soft:#2E2718;
+  --good:#6CC9A1; --good-soft:#15302A; --info:#93ACEB; --info-soft:#1C2540; --warn:#F0B566; --warn-soft:#35260F; --idle:#B3A9BB; --idle-soft:#2A2430;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 12px 30px -16px rgba(0,0,0,.7);
+  color-scheme:dark;
+}
+
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 15px/1.7 var(--sans);-webkit-font-smoothing:antialiased}
+h1,h2,h3,p{margin:0}
+h1,h2,h3{font-weight:500;text-wrap:balance}
+b,strong,th{font-weight:500}
+button,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--gold-line);outline-offset:2px}
+.num{font-variant-numeric:tabular-nums}
+.vh{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* ---------- 外框 ---------- */
+.app{display:grid;grid-template-columns:248px minmax(0,1fr);min-height:100%}
+.side{position:sticky;top:0;height:100vh;height:100dvh;background:var(--side);color:var(--side-ink);display:flex;flex-direction:column;gap:28px;padding:28px 18px calc(22px + env(safe-area-inset-bottom,0px))}
+.logo{display:flex;align-items:center;gap:12px;padding:0 8px;text-decoration:none;color:inherit}
+.logo i{width:16px;height:16px;transform:rotate(45deg);background:var(--gold);border-radius:2px;box-shadow:0 0 0 4px rgba(235,215,157,.18)}
+.logo b{font:500 22px/1 var(--serif);letter-spacing:.12em}
+.logo span{font-size:12px;color:var(--side-mute);letter-spacing:.06em}
+.nav{display:grid;gap:4px}
+.nav-k{font-size:12px;color:var(--side-mute);letter-spacing:.12em;padding:0 12px 6px}
+.nav button{display:flex;align-items:center;gap:12px;width:100%;padding:10px 12px;border:0;border-radius:var(--r);background:none;color:var(--side-ink);cursor:pointer;text-align:left;font-size:15px;transition:background-color .15s}
+.nav button svg{width:18px;height:18px;flex:none;opacity:.8}
+.nav button:hover{background:rgba(255,255,255,.06)}
+.nav button[aria-current="page"]{background:var(--side-active);color:#fff}
+.nav button[aria-current="page"]::after{content:"";margin-left:auto;width:6px;height:6px;transform:rotate(45deg);background:var(--gold)}
+.nav .cnt{margin-left:auto;font-size:12px;color:var(--side-mute)}
+.side-foot{margin-top:auto;border-top:1px solid rgba(255,255,255,.1);padding:16px 8px 0;display:grid;gap:2px;font-size:13px;color:var(--side-mute)}
+.side-foot b{color:var(--side-ink);font-size:14px}
+
+.main{min-width:0;display:flex;flex-direction:column}
+.top{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:12px;padding:12px clamp(16px,3vw,40px);background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.menu-btn{display:none;width:40px;height:40px;border-radius:var(--r);border:1px solid var(--line-2);background:var(--surface);cursor:pointer;align-items:center;justify-content:center}
+.menu-btn svg{width:20px;height:20px}
+.search{position:relative;flex:1 1 320px;max-width:420px}
+.search svg{position:absolute;left:12px;top:50%;width:17px;height:17px;transform:translateY(-50%);color:var(--muted)}
+.search input{width:100%;height:40px;border:1px solid var(--line-2);border-radius:999px;background:var(--surface);padding:0 14px 0 38px;font-size:15px}
+.search input::placeholder{color:var(--muted)}
+.search input:focus{outline:none;border-color:var(--plum);box-shadow:0 0 0 3px var(--plum-soft)}
+.tag-preview{margin-left:auto;font-size:12.5px;color:var(--gold-ink);background:var(--gold-soft);border:1px solid var(--gold-line);border-radius:999px;padding:3px 12px;white-space:nowrap}
+
+.content{width:100%;max-width:1240px;padding:28px clamp(16px,3vw,40px) 96px;display:grid;gap:22px}
+
+/* ---------- 標題列 ---------- */
+.page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px 24px;flex-wrap:wrap}
+.page-head>div{display:grid;gap:8px;min-width:0}
+.eyebrow{font-size:13px;color:var(--muted);letter-spacing:.08em}
+h1{font:500 clamp(28px,3vw,36px)/1.3 var(--serif);letter-spacing:.06em}
+.summary{color:var(--ink-2);max-width:40em}
+.summary em{font-style:normal;font:500 1.35em/1 var(--serif);color:var(--gold-ink);margin-inline:2px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:10px 20px;border-radius:var(--r);border:1px solid var(--line-2);background:var(--surface);color:var(--ink);cursor:pointer;font-size:15px;white-space:nowrap;transition:background-color .15s,border-color .15s,box-shadow .15s,transform .1s}
+.btn:hover{border-color:var(--plum)}
+.btn:active{transform:translateY(1px)}
+.btn svg{width:17px;height:17px}
+.btn-primary{background:var(--plum);border-color:var(--plum);color:var(--on-plum);box-shadow:inset 0 0 0 1px rgba(235,215,157,.35)}
+.btn-primary:hover{background:var(--plum-hover);border-color:var(--plum-hover)}
+.btn-primary svg{color:var(--gold)}
+
+/* 期間：上方圓角的頁籤 */
+.range{display:flex;gap:2px;border-bottom:1px solid var(--line-2)}
+.range button{border:1px solid transparent;border-bottom:0;border-radius:var(--r) var(--r) 0 0;background:none;padding:8px 18px;cursor:pointer;color:var(--muted);font-size:14.5px;margin-bottom:-1px;transition:color .15s,background-color .15s}
+.range button:hover{color:var(--ink)}
+.range button[aria-selected="true"]{background:var(--surface);color:var(--plum);border-color:var(--line-2);border-bottom:1px solid var(--surface)}
+:root[data-theme="dark"] .range button[aria-selected="true"]{color:var(--ink)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .range button[aria-selected="true"]{color:var(--ink)}}
+.range-note{margin-left:auto;align-self:center;font-size:12.5px;color:var(--muted)}
+
+/* ---------- 指標 ---------- */
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px 20px;display:grid;gap:6px;align-content:start;box-shadow:var(--shadow)}
+.kpi span{font-size:13.5px;color:var(--muted)}
+.kpi b{font:500 34px/1.15 var(--serif);font-variant-numeric:tabular-nums;color:var(--ink)}
+.kpi b small{font:400 14px var(--sans);color:var(--muted);margin-left:4px}
+.kpi em{font-style:normal;font-size:13px;color:var(--ink-2)}
+.kpi .meter{height:4px;border-radius:2px;background:var(--surface-2);overflow:hidden;margin-top:4px}
+.kpi .meter i{display:block;height:100%;background:var(--plum);border-radius:2px;transition:width .5s ease}
+.kpi.money{background:var(--side);border-color:var(--side);color:var(--side-ink)}
+.kpi.money span{color:var(--gold)}
+.kpi.money b{color:var(--gold)}
+.kpi.money b small,.kpi.money em{color:var(--side-mute)}
+
+/* ---------- 卡片 ---------- */
+.grid2{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);gap:16px;align-items:start}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);padding:20px 22px;display:grid;gap:14px;min-width:0}
+.card-head{display:flex;align-items:baseline;justify-content:space-between;gap:8px 16px;flex-wrap:wrap}
+.card-head h2{font:500 19px/1.4 var(--serif);letter-spacing:.04em}
+.card-head p{font-size:13px;color:var(--muted)}
+
+/* 長條圖 */
+.chart{position:relative;min-width:0}
+.chart svg{display:block;width:100%;height:auto;overflow:visible}
+.chart .grid{stroke:var(--line);stroke-width:1}
+.chart .zero{stroke:var(--line-2);stroke-width:1}
+.chart .tick{fill:var(--muted);font:400 11.5px var(--sans)}
+.chart .lbl{fill:var(--ink-2);font:400 13px var(--sans)}
+.chart .lbl-sub{fill:var(--muted);font:400 11.5px var(--sans)}
+.chart .val{fill:var(--ink);font:500 13px var(--sans);font-variant-numeric:tabular-nums}
+.chart .bar{fill:var(--plum)}
+.chart .bar.lost{fill:var(--line-2)}
+.chart .row:hover .bar,.chart .row:focus-visible .bar{fill:var(--plum-hover)}
+.chart .row.lost:hover .bar{fill:var(--muted)}
+.chart .row{cursor:pointer;outline:none}
+.chart .hit{fill:transparent}
+.chart .row:hover .hit,.chart .row:focus-visible .hit{fill:var(--surface-2)}
+.tip{position:absolute;z-index:5;pointer-events:none;background:var(--surface);border:1px solid var(--line-2);border-radius:var(--r);box-shadow:var(--shadow);padding:10px 12px;font-size:13px;min-width:200px;display:grid;gap:4px}
+.tip b{font-size:13.5px}
+.tip div{display:flex;justify-content:space-between;gap:14px;color:var(--ink-2)}
+.tip div.best{color:var(--gold-ink)}
+
+/* 追蹤清單 */
+.follow{list-style:none;margin:0;padding:0;display:grid}
+.follow li+li{border-top:1px solid var(--line)}
+.follow button{width:100%;display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 12px;align-items:center;text-align:left;border:0;background:none;padding:12px 4px;cursor:pointer;border-radius:var(--r)}
+.follow button:hover{background:var(--surface-2)}
+.date{font-variant-numeric:tabular-nums;font-size:13px;border:1px solid var(--line-2);border-radius:6px;padding:2px 8px;color:var(--ink-2);grid-row:span 2;align-self:start;margin-top:2px}
+.date.over{border-color:transparent;background:var(--warn-soft);color:var(--warn)}
+.follow b{font-size:14.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.follow span{font-size:13px;color:var(--muted)}
+.empty-s{font-size:14px;color:var(--muted);padding:12px 0}
+
+/* ---------- 篩選與表格 ---------- */
+.filters{display:flex;gap:8px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line-2);background:var(--surface);color:var(--ink-2);border-radius:999px;padding:5px 14px;cursor:pointer;font-size:14px;min-height:36px;transition:background-color .15s,border-color .15s,color .15s}
+.chip:hover{border-color:var(--plum)}
+.chip[aria-pressed="true"]{background:var(--plum);border-color:var(--plum);color:var(--on-plum)}
+.chip i{font-style:normal;font-size:12px;opacity:.75;font-variant-numeric:tabular-nums}
+.table-wrap{min-width:0;overflow-x:auto;margin-inline:-6px}
+table{width:100%;border-collapse:collapse;font-size:14.5px}
+th{font-size:12.5px;color:var(--muted);text-align:left;padding:8px 10px;border-bottom:1px solid var(--line-2);white-space:nowrap}
+td{padding:14px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
+th.r,td.r{text-align:right}
+tbody tr{cursor:pointer;transition:background-color .12s}
+tbody tr:hover{background:var(--surface-2)}
+tbody tr:focus-visible{outline:2px solid var(--gold-line);outline-offset:-2px}
+.addr{display:grid;gap:2px;min-width:0}
+.addr b{font-size:15px}
+.addr span{font-size:12.5px;color:var(--muted)}
+.st{display:inline-flex;align-items:center;gap:6px;font-size:13px;border-radius:999px;padding:2px 10px;white-space:nowrap}
+.st::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.st.visit{background:var(--idle-soft);color:var(--idle)}
+.st.report{background:var(--info-soft);color:var(--info)}
+.st.thinking{background:var(--warn-soft);color:var(--warn)}
+.st.signed{background:var(--good-soft);color:var(--good)}
+.st.lost{background:var(--idle-soft);color:var(--idle)}
+.best{display:grid;justify-items:end;gap:0}
+.best b{font:500 18px/1.3 var(--serif);font-variant-numeric:tabular-nums}
+.best span{font-size:12px;color:var(--muted)}
+.empty{display:grid;justify-items:center;gap:10px;text-align:center;padding:28px 12px;color:var(--muted);border:1px dashed var(--line-2);border-radius:var(--r)}
+.empty b{color:var(--ink);font-size:15.5px}
+
+/* ---------- 詳細資料抽屜 ---------- */
+.scrim{position:fixed;inset:0;z-index:40;background:rgba(30,20,38,.36);opacity:0;transition:opacity .2s}
+.scrim.on{opacity:1}
+.drawer{position:fixed;z-index:41;top:0;right:0;bottom:0;width:min(440px,100%);background:var(--surface);border-left:1px solid var(--line);box-shadow:-20px 0 50px -30px rgba(30,20,38,.5);display:flex;flex-direction:column;transform:translateX(100%);transition:transform .25s cubic-bezier(.2,.8,.2,1);padding-bottom:env(safe-area-inset-bottom,0px)}
+.drawer.on{transform:none}
+.dr-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:22px 22px 16px;border-bottom:1px solid var(--line)}
+.dr-head h2{font:500 21px/1.4 var(--serif);letter-spacing:.03em}
+.dr-head p{font-size:13px;color:var(--muted);margin-top:4px}
+.x{width:40px;height:40px;flex:none;border:1px solid var(--line-2);border-radius:var(--r);background:var(--surface);cursor:pointer;display:grid;place-items:center}
+.x svg{width:18px;height:18px}
+.dr-body{padding:18px 22px 24px;overflow:auto;display:grid;gap:18px;align-content:start}
+.dr-k{font-size:13px;color:var(--muted);letter-spacing:.04em}
+.paths{display:grid;gap:10px}
+.path{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;align-items:center;padding:12px 14px;border:1px solid var(--line);border-radius:var(--r)}
+.path b{font-size:14.5px}
+.path .v{font:500 20px/1.2 var(--serif);font-variant-numeric:tabular-nums}
+.path .track{grid-column:1/-1;height:6px;border-radius:3px;background:var(--surface-2);position:relative;overflow:hidden}
+.path .track i{position:absolute;top:0;bottom:0;border-radius:3px;background:var(--line-2)}
+.path.top{border-color:var(--gold-line);background:var(--gold-soft)}
+.path.top .v{color:var(--gold-ink)}
+.path.top .track i{background:var(--plum)}
+.path.top b::after{content:"十年最高";margin-left:8px;font-size:12px;color:var(--gold-ink);border:1px solid var(--gold-line);border-radius:999px;padding:1px 8px}
+.facts{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px 16px;font-size:14px;margin:0}
+.facts dt{color:var(--muted)}
+.facts dd{margin:0;color:var(--ink)}
+.note{background:var(--surface-2);border-radius:var(--r);padding:12px 14px;font-size:14px;color:var(--ink-2)}
+.dr-foot{margin-top:auto;padding:14px 22px;border-top:1px solid var(--line);display:flex;gap:10px;flex-wrap:wrap}
+.dr-foot .btn{flex:1 1 auto}
+
+/* ---------- 提示 ---------- */
+.toast{position:fixed;z-index:60;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translate(-50%,16px);opacity:0;pointer-events:none;background:var(--side);color:var(--side-ink);border-radius:var(--r);padding:12px 18px;font-size:14px;box-shadow:0 18px 40px -16px rgba(0,0,0,.5);transition:opacity .2s,transform .2s;max-width:calc(100% - 32px)}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+.toast i{display:inline-block;width:7px;height:7px;transform:rotate(45deg);background:var(--gold);margin-right:10px;vertical-align:2px}
+.fab{display:none}
+
+/* ---------- 窄螢幕 ---------- */
+@media (max-width:1080px){
+  .kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .grid2{grid-template-columns:minmax(0,1fr)}
+}
+@media (max-width:860px){
+  .app{grid-template-columns:minmax(0,1fr)}
+  .side{position:fixed;z-index:50;left:0;top:0;bottom:0;width:min(280px,86vw);height:auto;transform:translateX(-100%);transition:transform .25s cubic-bezier(.2,.8,.2,1);padding-top:calc(24px + env(safe-area-inset-top,0px))}
+  .side.on{transform:none;box-shadow:20px 0 50px -20px rgba(0,0,0,.5)}
+  .menu-btn{display:inline-flex}
+  .top{top:env(safe-area-inset-top,0px)}
+  .head-btn{display:none}
+  .fab{display:grid;place-items:center;position:fixed;z-index:30;right:20px;bottom:calc(22px + env(safe-area-inset-bottom,0px));width:56px;height:56px;border:0;border-radius:12px;transform:rotate(45deg);background:var(--plum);box-shadow:0 0 0 1px rgba(235,215,157,.5),0 14px 30px -10px rgba(57,39,72,.6);cursor:pointer}
+  .fab svg{width:22px;height:22px;transform:rotate(-45deg);color:var(--gold)}
+  .fab:hover{background:var(--plum-hover)}
+}
+@media (max-width:640px){
+  .tag-preview{display:none}
+  .range{overflow-x:auto;scrollbar-width:none}
+  .range button{flex:none;padding:8px 14px}
+  .range-note{display:none}
+  .kpi{padding:14px 16px}
+  .kpi b{font-size:28px}
+  /* 表格改成一案一張的清單 */
+  table,thead,tbody,tr,td{display:block}
+  thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+  tbody{display:grid;gap:10px}
+  tbody tr{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;border:1px solid var(--line);border-radius:var(--r);padding:14px}
+  td{padding:0;border:0}
+  td.c-st{grid-column:1;grid-row:2}
+  td.c-best{grid-column:2;grid-row:1/3;align-self:center}
+  td.c-size,td.c-follow{display:none}
+  .table-wrap{margin:0;overflow:visible}
+  .card{padding:16px}
+}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+</style>
+<!-- /build:head -->
+</head>
+<body>
+<!-- build:body -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 20V9.5l8-5.5 8 5.5V20h-5.2v-6H9.2v6z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24"><path d="M5 6.5h14M5 12h14M5 17.5h9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+  <symbol id="i-walk" viewBox="0 0 24 24"><path d="M4 19h16M7 19V8l5-3 5 3v11M10 19v-5h4v5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></symbol>
+  <symbol id="i-doc" viewBox="0 0 24 24"><path d="M7 3.5h7l4 4V20.5H7zM14 3.5v4h4M9.5 12h6M9.5 15.5h6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></symbol>
+  <symbol id="i-coin" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 7.5v9M9.5 10c0-1.2 1-2 2.5-2s2.5.8 2.5 2-1 1.6-2.5 2-2.5.8-2.5 2 1 2 2.5 2 2.5-.8 2.5-2" fill="none" stroke="currentColor" stroke-width="1.4"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="m16 16 4 4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+</svg>
+
+<div class="app">
+  <aside class="side" id="side" aria-label="主要選單">
+    <a class="logo" href="#"><i aria-hidden="true"></i><span><b>亮燈</b><br><span>業者後台</span></span></a>
+    <nav class="nav" aria-label="頁面">
+      <p class="nav-k">工作</p>
+      <button type="button" aria-current="page" data-page="總覽"><svg aria-hidden="true"><use href="#i-home"/></svg>總覽</button>
+      <button type="button" data-page="案件"><svg aria-hidden="true"><use href="#i-list"/></svg>案件<span class="cnt num" id="navCount"></span></button>
+      <button type="button" data-page="拜訪流程"><svg aria-hidden="true"><use href="#i-walk"/></svg>拜訪流程</button>
+      <button type="button" data-page="報告"><svg aria-hidden="true"><use href="#i-doc"/></svg>報告</button>
+      <button type="button" data-page="收入設定"><svg aria-hidden="true"><use href="#i-coin"/></svg>收入設定</button>
+    </nav>
+    <div class="side-foot"><b>示範業者・新竹縣</b><span>預覽版，資料都是示範案件</span></div>
+  </aside>
+
+  <div class="main">
+    <header class="top">
+      <button type="button" class="menu-btn" id="menuBtn" aria-label="開啟選單" aria-controls="side" aria-expanded="false"><svg aria-hidden="true"><use href="#i-menu"/></svg></button>
+      <label class="search"><span class="vh">搜尋案件</span><svg aria-hidden="true"><use href="#i-search"/></svg><input id="q" type="search" placeholder="搜尋地址或備註…" autocomplete="off"></label>
+      <span class="tag-preview">預覽版・示範資料</span>
+    </header>
+
+    <main class="content" id="content">
+      <div class="page-head">
+        <div>
+          <p class="eyebrow" id="eyebrow"></p>
+          <h1>案件總覽</h1>
+          <p class="summary" id="summary"></p>
+        </div>
+        <button type="button" class="btn btn-primary head-btn" data-act="new"><svg aria-hidden="true"><use href="#i-plus"/></svg>新拜訪</button>
+      </div>
+
+      <div class="range" role="tablist" aria-label="期間" id="range">
+        <button type="button" role="tab" data-range="30" aria-selected="true">近 30 天</button>
+        <button type="button" role="tab" data-range="month" aria-selected="false">本月</button>
+        <button type="button" role="tab" data-range="7" aria-selected="false">近 7 天</button>
+        <span class="range-note">示範資料以 2026/10/12 為今天</span>
+      </div>
+
+      <section class="kpis" id="kpis" aria-label="期間內的指標"></section>
+
+      <div class="grid2">
+        <section class="card" aria-labelledby="chartTitle">
+          <div class="card-head"><h2 id="chartTitle">每一案十年下來最多能多賺多少</h2><p>三條路裡淨收入最高的那條；點長條看細節</p></div>
+          <div class="chart" id="chart"></div>
+        </section>
+        <section class="card" aria-labelledby="followTitle">
+          <div class="card-head"><h2 id="followTitle">需要追蹤</h2><p>屋主考慮中或已出報告</p></div>
+          <ul class="follow" id="follow"></ul>
+        </section>
+      </div>
+
+      <section class="card" aria-labelledby="listTitle">
+        <div class="card-head"><h2 id="listTitle">案件</h2><p id="listNote"></p></div>
+        <div class="filters" id="filters" aria-label="依狀態篩選"></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>地址</th><th>狀態</th><th class="r">坪數／屋齡</th><th class="r">十年最高</th><th class="r">追蹤</th></tr></thead>
+            <tbody id="rows"></tbody>
+          </table>
+        </div>
+        <div class="empty" id="empty" hidden><b id="emptyTitle"></b><span>換個關鍵字，或把狀態改回「全部」。</span><button type="button" class="btn" id="clear">清除搜尋與篩選</button></div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<button type="button" class="fab" data-act="new" aria-label="新拜訪"><svg aria-hidden="true"><use href="#i-plus"/></svg></button>
+
+<div class="scrim" id="scrim" hidden></div>
+<aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="drTitle" hidden>
+  <div class="dr-head"><div><h2 id="drTitle"></h2><p id="drSub"></p></div><button type="button" class="x" id="drClose" aria-label="關閉"><svg aria-hidden="true"><use href="#i-x"/></svg></button></div>
+  <div class="dr-body" id="drBody"></div>
+  <div class="dr-foot"><button type="button" class="btn btn-primary" data-act="open">開啟拜訪流程</button><button type="button" class="btn" id="drClose2">關閉</button></div>
+</aside>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="../js/util.js"></script>
+<script src="../js/rules.js"></script>
+<script src="../js/catalog.js"></script>
+<script src="../js/calc.js"></script>
+<script src="../js/deed.js"></script>
+<script src="../js/pipeline.js"></script>
+<script src="../js/demo.js"></script>
+<script>
+/* 預覽版：用亮燈的示範案件與試算模組（金額全由 calc.js 計算），不保存、不連後端。 */
+(function () {
+  'use strict';
+  const { calc, pipeline, demo, util } = LD;
+  const $ = s => document.querySelector(s);
+  const esc = util.esc, fmt = util.fmt, wan = util.wan;
+  const TODAY = '2026-10-12';
+
+  // 每一案的十年試算（和正式版同一套算法）
+  const renoOf = c => {
+    if (!c.calc.renoAuto) return c.calc.reno;
+    const lines = c.repairs || calc.autoRepairLines(c.diagnosis).map(l => ({ ...l, on: true }));
+    return calc.repairTotals(lines, c.case.ping).mid;
+  };
+  const CASES = [demo.mainDemo(), ...demo.otherDemos()].map(c => {
+    const res = calc.computePaths({ ...c.calc, city: c.case.city }, renoOf(c), LD.RULES, LD.NATIONAL);
+    const best = calc.rankPaths(res)[0];
+    const name = c.case.addr.replace(/（示範）/, '');
+    return { c, res, best, name, short: name.replace(/^(新竹縣|台北市)/, ''), city: LD.RULES[c.case.city].name };
+  });
+
+  const S = { range: '30', status: 'all', q: '', open: null };
+  const daysAgo = d => { const t = new Date(TODAY + 'T00:00:00'); t.setDate(t.getDate() - d); return t.toISOString().slice(0, 10); };
+  const inRange = x => S.range === 'month' ? x.c.createdAt.slice(0, 7) === TODAY.slice(0, 7) : x.c.createdAt >= daysAgo(Number(S.range));
+  const RANGE_LABEL = { month: '十月', 7: '近 7 天', 30: '近 30 天' };
+  const statusLabel = k => pipeline.STATUS[k].label;
+  const pathLabel = (p, mode) => calc.pathName(p.key, mode);
+
+  function render() {
+    const inR = CASES.filter(inRange);
+    const st = pipeline.pipelineStats(inR.map(x => x.c), pipeline.DEFAULT_FEES);
+    $('#navCount').textContent = CASES.length;
+    $('#eyebrow').textContent = `${RANGE_LABEL[S.range]}・新竹縣與台北市`;
+    $('#summary').innerHTML = inR.length
+      ? `${RANGE_LABEL[S.range]}拜訪 ${st.visits} 戶，${st.openCases} 戶還在洽談。` + (st.signed ? `簽下的 ${st.signed} 戶可申請開發費<em class="num">${fmt(st.devIncome)}</em>元。` : '這段期間還沒有簽約。')
+      : `${RANGE_LABEL[S.range]}還沒有拜訪紀錄。`;
+
+    const pct = r => Math.round(r * 100);
+    $('#kpis').innerHTML = [
+      ['拜訪', st.visits, '戶', `洽談中 ${st.openCases} 戶`, null],
+      ['已出報告', st.reported, '戶', `出報告率 ${pct(st.reportRate)}%`, st.reportRate],
+      ['已簽約', st.signed, '戶', `簽約率 ${pct(st.signRate)}%`, st.signRate],
+    ].map(([k, v, u, e, r]) => `<div class="kpi"><span>${k}</span><b class="num">${v}<small>${u}</small></b><em>${e}</em>${r == null ? '' : `<div class="meter" aria-hidden="true"><i style="width:${pct(r)}%"></i></div>`}</div>`).join('') +
+      `<div class="kpi money"><span>預估開發費收入</span><b class="num">${fmt(st.devIncome)}<small>元</small></b><em>亮燈服務費 ${fmt(st.serviceIncome)} 元</em></div>`;
+
+    renderChart(inR);
+    renderFollow(inR);
+    renderTable(inR);
+  }
+
+  /* 長條圖：每案十年最高淨收入（單一數列，依金額排序；未成交用灰色） */
+  function renderChart(list) {
+    const box = $('#chart');
+    const rows = list.slice().sort((a, b) => b.best.total - a.best.total);
+    if (!rows.length) { box.innerHTML = '<p class="empty-s">這段期間沒有案件。</p>'; return; }
+    const W = Math.max(300, Math.round(box.clientWidth || 600)), narrow = W < 520;
+    const L = narrow ? 112 : 168, R = 64, rowH = 44, top = 8, H = top + rows.length * rowH + 26;
+    const max = Math.max(...rows.map(r => r.best.total), 1);
+    const step = max > 1500000 ? 500000 : 250000, nice = Math.ceil(max / step) * step;
+    const x = v => L + (W - L - R) * Math.max(0, v) / nice;
+    let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="每一案十年最高淨收入">`;
+    for (let v = 0; v <= nice; v += step) if (!narrow || (v / step) % 2 === 0) s += `<line class="${v ? 'grid' : 'zero'}" x1="${x(v)}" x2="${x(v)}" y1="${top}" y2="${H - 22}"/><text class="tick" x="${x(v)}" y="${H - 6}" text-anchor="middle">${v ? wan(v) : '0'}</text>`;
+    rows.forEach((r, i) => {
+      const y = top + i * rowH, bw = Math.max(4, x(r.best.total) - L), cy = y + rowH / 2;
+      const lost = r.c.status === 'lost';
+      s += `<g class="row${lost ? ' lost' : ''}" tabindex="0" role="button" data-id="${esc(r.c.id)}" aria-label="${esc(r.short)}，十年最高 ${wan(r.best.total)}">
+        <rect class="hit" x="0" y="${y + 2}" width="${W}" height="${rowH - 4}" rx="6"/>
+        <text class="lbl" x="${L - 12}" y="${cy - 2}" text-anchor="end">${esc(r.short.length > (narrow ? 7 : 11) ? r.short.slice(0, narrow ? 7 : 11) + '…' : r.short)}</text>
+        <text class="lbl-sub" x="${L - 12}" y="${cy + 14}" text-anchor="end">${statusLabel(r.c.status)}</text>
+        <path class="bar" d="M${L} ${cy - 7}h${bw - 4}a4 4 0 0 1 4 4v6a4 4 0 0 1 -4 4h${-(bw - 4)}z"/>
+        <text class="val" x="${L + bw + 8}" y="${cy + 4.5}">${wan(r.best.total)}</text></g>`;
+    });
+    box.innerHTML = s + '</svg><div class="tip" id="tip" hidden></div>';
+    const tip = $('#tip');
+    box.querySelectorAll('.row').forEach(g => {
+      const r = CASES.find(x => x.c.id === g.dataset.id);
+      const show = () => {
+        const m = r.c.calc.mode;
+        tip.innerHTML = `<b>${esc(r.short)}</b>` + [r.res.A, r.res.B, r.res.C].map(p => `<div class="${p.key === r.best.key ? 'best' : ''}"><span>${pathLabel(p, m)}</span><span class="num">${wan(p.total)}</span></div>`).join('');
+        tip.hidden = false;
+        const gb = g.getBoundingClientRect(), bb = box.getBoundingClientRect();
+        tip.style.left = Math.min(bb.width - tip.offsetWidth, Math.max(0, gb.left - bb.left + L)) + 'px';
+        tip.style.top = (gb.bottom - bb.top + 4) + 'px';
+      };
+      g.addEventListener('mouseenter', show);
+      g.addEventListener('focus', show);
+      g.addEventListener('mouseleave', () => { tip.hidden = true; });
+      g.addEventListener('blur', () => { tip.hidden = true; });
+      g.addEventListener('click', () => openCase(r.c.id, g));
+      g.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openCase(r.c.id, g); } });
+    });
+  }
+
+  function renderFollow(list) {
+    const f = pipeline.followUps(list.map(x => x.c), TODAY);
+    $('#follow').innerHTML = f.length ? f.map(({ c, overdue }) => {
+      const r = CASES.find(x => x.c === c);
+      return `<li><button type="button" data-id="${esc(c.id)}"><span class="date${overdue ? ' over' : ''}">${c.followUp.slice(5).replace('-', '/')}${overdue ? ' 已過' : ''}</span><b>${esc(r.short)}</b><span>${statusLabel(c.status)}・${esc(c.note || '—')}</span></button></li>`;
+    }).join('') : '<li class="empty-s">這段期間沒有要追蹤的案件。</li>';
+    $('#follow').querySelectorAll('button').forEach(b => b.addEventListener('click', () => openCase(b.dataset.id, b)));
+  }
+
+  function renderTable(list) {
+    const counts = Object.fromEntries(pipeline.STATUSES.map(s => [s.key, list.filter(x => x.c.status === s.key).length]));
+    const chips = [['all', '全部', list.length], ...pipeline.STATUSES.map(s => [s.key, s.label, counts[s.key]])];
+    $('#filters').innerHTML = chips.map(([k, l, n]) => `<button type="button" class="chip" data-status="${k}" aria-pressed="${S.status === k}">${l}<i>${n}</i></button>`).join('');
+    const q = S.q.trim();
+    const rows = list.filter(x => (S.status === 'all' || x.c.status === S.status) && (!q || (x.name + (x.c.note || '')).includes(q)))
+      .sort((a, b) => b.c.createdAt.localeCompare(a.c.createdAt));
+    $('#listNote').textContent = `${rows.length} 案・依建立日期由新到舊`;
+    $('#rows').innerHTML = rows.map(r => `<tr tabindex="0" data-id="${esc(r.c.id)}">
+      <td><div class="addr"><b>${esc(r.short)}</b><span>${esc(r.city)}・建立 ${r.c.createdAt.slice(5).replace('-', '/')}</span></div></td>
+      <td class="c-st"><span class="st ${r.c.status}">${statusLabel(r.c.status)}</span></td>
+      <td class="r num c-size">${r.c.case.ping} 坪／${r.c.case.age} 年</td>
+      <td class="r c-best"><div class="best"><b>${wan(r.best.total)}</b><span>${pathLabel(r.best, r.c.calc.mode)}</span></div></td>
+      <td class="r num c-follow">${r.c.followUp ? r.c.followUp.slice(5).replace('-', '/') : '—'}</td></tr>`).join('');
+    const empty = !rows.length;
+    $('#empty').hidden = !empty;
+    $('.table-wrap').hidden = empty;
+    if (empty) $('#emptyTitle').textContent = q ? `找不到「${q}」` : '這個狀態目前沒有案件';
+    $('#rows').querySelectorAll('tr').forEach(tr => {
+      tr.addEventListener('click', () => openCase(tr.dataset.id, tr));
+      tr.addEventListener('keydown', e => { if (e.key === 'Enter') openCase(tr.dataset.id, tr); });
+    });
+  }
+
+  /* 詳細資料抽屜 */
+  let lastFocus = null;
+  function openCase(id, from) {
+    const r = CASES.find(x => x.c.id === id);
+    if (!r) return;
+    lastFocus = from || document.activeElement;
+    const m = r.c.calc.mode, paths = [r.res.A, r.res.B, r.res.C];
+    const hi = Math.max(...paths.map(p => Math.abs(p.total)), 1);
+    $('#drTitle').textContent = r.short;
+    $('#drSub').textContent = `${r.city}・${r.c.case.ping} 坪・屋齡 ${r.c.case.age} 年・${statusLabel(r.c.status)}`;
+    $('#drBody').innerHTML = `<p class="dr-k">十年淨收入（依縣市稅率試算）</p>
+      <div class="paths">${paths.map(p => `<div class="path${p.key === r.best.key ? ' top' : ''}"><b>${pathLabel(p, m)}</b><span class="v num">${wan(p.total)}</span><span class="track"><i style="${p.total >= 0 ? `left:0;width:${p.total / hi * 100}%` : `left:0;width:${-p.total / hi * 100}%;opacity:.55`}"></i></span></div>`).join('')}</div>
+      <dl class="facts"><dt>月租</dt><dd class="num">${fmt(r.c.calc.rent)} 元</dd><dt>整理費用</dt><dd class="num">${wan(renoOf(r.c))}</dd><dt>追蹤日期</dt><dd class="num">${r.c.followUp ? r.c.followUp.replace(/-/g, '/') : '未設定'}</dd></dl>
+      ${r.c.note ? `<p class="note">${esc(r.c.note)}</p>` : ''}`;
+    S.open = id;
+    const sc = $('#scrim'), dr = $('#drawer');
+    sc.hidden = false; dr.hidden = false;
+    requestAnimationFrame(() => { sc.classList.add('on'); dr.classList.add('on'); $('#drClose').focus(); });
+  }
+  function closeCase() {
+    if (!S.open) return;
+    S.open = null;
+    const sc = $('#scrim'), dr = $('#drawer');
+    sc.classList.remove('on'); dr.classList.remove('on');
+    setTimeout(() => { sc.hidden = true; dr.hidden = true; }, matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 260);
+    if (lastFocus && lastFocus.focus) lastFocus.focus();
+  }
+
+  let tt = 0;
+  function toast(msg) {
+    const t = $('#toast');
+    t.innerHTML = `<i aria-hidden="true"></i>${esc(msg)}`;
+    t.classList.add('on');
+    clearTimeout(tt); tt = setTimeout(() => t.classList.remove('on'), 2600);
+  }
+
+  /* 事件 */
+  $('#range').addEventListener('click', e => {
+    const b = e.target.closest('[data-range]'); if (!b) return;
+    S.range = b.dataset.range; S.status = 'all';
+    $('#range').querySelectorAll('[data-range]').forEach(x => x.setAttribute('aria-selected', String(x === b)));
+    render();
+  });
+  $('#filters').addEventListener('click', e => { const b = e.target.closest('[data-status]'); if (!b) return; S.status = b.dataset.status; render(); });
+  $('#q').addEventListener('input', e => { S.q = e.target.value; render(); });
+  $('#clear').addEventListener('click', () => { S.q = ''; S.status = 'all'; $('#q').value = ''; render(); });
+  document.querySelectorAll('[data-act="new"]').forEach(b => b.addEventListener('click', () => toast('預覽版不會建立案件。正式版按這裡會開始一次新拜訪。')));
+  document.querySelector('[data-act="open"]').addEventListener('click', () => toast('預覽版只做了總覽，拜訪流程請看正式版。'));
+  $('#scrim').addEventListener('click', closeCase);
+  $('#drClose').addEventListener('click', closeCase);
+  $('#drClose2').addEventListener('click', closeCase);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeCase(); setSide(false); } });
+  $('.nav').addEventListener('click', e => {
+    const b = e.target.closest('[data-page]'); if (!b) return;
+    if (b.dataset.page !== '總覽') toast(`預覽版只做了總覽，「${b.dataset.page}」之後再做。`);
+    setSide(false);
+  });
+  function setSide(on) { $('#side').classList.toggle('on', on); $('#menuBtn').setAttribute('aria-expanded', String(on)); }
+  $('#menuBtn').addEventListener('click', () => setSide(!$('#side').classList.contains('on')));
+  document.addEventListener('click', e => { if ($('#side').classList.contains('on') && !e.target.closest('#side,#menuBtn')) setSide(false); });
+  let rt = 0;
+  addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => renderChart(CASES.filter(inRange)), 150); });
+
+  render();
+})();
+</script>
+<!-- /build:body -->
+</body>
+</html>
