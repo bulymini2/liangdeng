@@ -1,0 +1,601 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<!-- build:head -->
+<title>亮燈智慧空屋託管平台</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500&family=Inter:wght@400;500&display=swap">
+<style>
+/* 版面：深藍石墨的長頁，中央 1200 內容寬；玻璃卡片＋細線數據框，金色只給主要行動與關鍵數字，翡翠綠只代表收益與安全。
+   刻意只做深色（B2B 資產管理的信任感），所以不跟系統切換亮暗。 */
+:root{
+  --bg:#0F172A; --bg-2:#131C31; --panel:#1E293B; --ink:#F1F5F9; --ink-2:#CBD5E1; --muted:#94A3B8; --faint:#64748B;
+  --line:rgba(148,163,184,.16); --line-2:rgba(148,163,184,.28);
+  --glass:rgba(30,41,59,.55); --glass-2:rgba(30,41,59,.78);
+  --gold:#D4AF37; --gold-hi:#F3D77A; --gold-lo:#A8842A; --gold-soft:rgba(212,175,55,.12); --on-gold:#1A1405;
+  --emerald:#10B981; --emerald-hi:#34D399; --emerald-soft:rgba(16,185,129,.12);
+  --risk:#F87171; --risk-soft:rgba(248,113,113,.1);
+  --sans:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+  --num:"Inter","Noto Sans TC",system-ui,sans-serif;
+  --r:16px; --r-sm:10px; --page:1200px;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{scroll-behavior:smooth;scroll-padding-top:84px}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.75 var(--sans);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+h1,h2,h3,p{margin:0}
+h1,h2,h3{font-weight:500;text-wrap:balance;word-break:keep-all;overflow-wrap:anywhere}
+b,strong{font-weight:500}
+a{color:inherit}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--gold-hi);outline-offset:3px;border-radius:6px}
+.num{font-family:var(--num);font-variant-numeric:tabular-nums}
+.wrap{max-width:var(--page);margin:0 auto;padding-inline:20px}
+@media (prefers-reduced-motion: reduce){*,*::before,*::after{animation:none!important;transition:none!important}html{scroll-behavior:auto}}
+
+/* 背景：細格線＋兩團微光 */
+.bg-grid{position:fixed;inset:0;z-index:-1;pointer-events:none;background:
+  radial-gradient(600px 420px at 78% 8%,rgba(212,175,55,.13),transparent 70%),
+  radial-gradient(560px 460px at 8% 38%,rgba(16,185,129,.10),transparent 70%),
+  linear-gradient(var(--bg),var(--bg-2));}
+.bg-grid::after{content:"";position:absolute;inset:0;background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);background-size:56px 56px;mask-image:linear-gradient(180deg,rgba(0,0,0,.55),transparent 70%);-webkit-mask-image:linear-gradient(180deg,rgba(0,0,0,.55),transparent 70%);opacity:.5}
+
+/* ---------- 按鈕 ---------- */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:48px;padding:12px 24px;border-radius:999px;border:1px solid var(--line-2);background:var(--glass);color:var(--ink);text-decoration:none;cursor:pointer;font-size:15.5px;font-weight:500;white-space:nowrap;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);transition:transform .15s,box-shadow .25s,border-color .2s,background-color .2s}
+.btn:hover{border-color:var(--ink-2);background:var(--glass-2)}
+.btn:active{transform:translateY(1px)}
+.btn svg{width:18px;height:18px;flex:none}
+.btn-gold{border:0;color:var(--on-gold);background:linear-gradient(135deg,var(--gold-hi) 0%,var(--gold) 45%,var(--gold-lo) 100%);box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 10px 30px -10px rgba(212,175,55,.55)}
+.btn-gold:hover{background:linear-gradient(135deg,#FBE39A 0%,#DDB940 45%,#B48F2E 100%);box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 14px 36px -10px rgba(212,175,55,.75)}
+.btn-sm{min-height:40px;padding:8px 18px;font-size:14.5px}
+
+/* ---------- 導覽列 ---------- */
+.nav{position:sticky;top:0;z-index:30;padding-top:env(safe-area-inset-top,0px);background:rgba(15,23,42,.72);-webkit-backdrop-filter:blur(14px) saturate(1.3);backdrop-filter:blur(14px) saturate(1.3);border-bottom:1px solid var(--line)}
+.nav-in{display:flex;align-items:center;gap:28px;height:68px}
+.logo{display:flex;align-items:center;gap:12px;text-decoration:none}
+.logo i{position:relative;width:22px;height:22px;border-radius:5px;background:linear-gradient(var(--gold-hi),var(--gold));box-shadow:0 0 18px rgba(212,175,55,.5)}
+.logo i::before,.logo i::after{content:"";position:absolute;background:rgba(26,20,5,.45)}
+.logo i::before{left:50%;top:0;bottom:0;width:1.5px;transform:translateX(-50%)}
+.logo i::after{top:50%;left:0;right:0;height:1.5px;transform:translateY(-50%)}
+.logo b{font-size:19px;letter-spacing:.1em}
+.logo span{font-size:12.5px;color:var(--muted);letter-spacing:.04em}
+.links{display:flex;gap:4px;margin-left:auto}
+.links a{color:var(--ink-2);text-decoration:none;font-size:14.5px;padding:8px 12px;border-radius:999px;transition:color .15s,background-color .15s}
+.links a:hover{color:var(--ink);background:rgba(148,163,184,.1)}
+@media (max-width:880px){.links{display:none}.nav .btn-sm{margin-left:auto}}
+
+/* ---------- 共用區塊 ---------- */
+section{padding-block:clamp(72px,9vw,120px)}
+.sec-head{display:grid;gap:14px;max-width:720px;margin-bottom:clamp(36px,5vw,56px)}
+.kicker{display:inline-flex;align-items:center;gap:8px;width:fit-content;font-size:13px;color:var(--gold-hi);letter-spacing:.08em;padding:4px 12px;border:1px solid rgba(212,175,55,.35);border-radius:999px;background:var(--gold-soft)}
+.kicker::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--gold);box-shadow:0 0 10px var(--gold)}
+.sec-head h2{font-size:clamp(28px,3.4vw,42px);line-height:1.35;letter-spacing:0}
+.sec-head p{color:var(--ink-2);font-size:17px}
+.glass{position:relative;background:var(--glass);border:1px solid var(--line);border-radius:var(--r);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);box-shadow:inset 0 1px 0 rgba(255,255,255,.04),0 30px 60px -40px rgba(0,0,0,.8)}
+/* 數據框的四個角 */
+.ticks::before,.ticks::after{content:"";position:absolute;width:12px;height:12px;border-color:rgba(212,175,55,.55);border-style:solid;pointer-events:none}
+.ticks::before{top:-1px;left:-1px;border-width:1px 0 0 1px;border-top-left-radius:var(--r)}
+.ticks::after{bottom:-1px;right:-1px;border-width:0 1px 1px 0;border-bottom-right-radius:var(--r)}
+.demo-tag{font-size:12px;color:var(--muted);border:1px dashed var(--line-2);border-radius:999px;padding:2px 10px;white-space:nowrap}
+
+/* ---------- Hero ---------- */
+.hero{padding-block:clamp(56px,8vw,104px) clamp(64px,8vw,110px)}
+.hero-grid{display:grid;grid-template-columns:minmax(0,1.08fr) minmax(0,.92fr);gap:clamp(32px,5vw,64px);align-items:center}
+.hero-copy{display:grid;gap:24px;min-width:0}
+.hero h1{display:grid;gap:10px;line-height:1.25}
+.hero h1 .brand{font-size:clamp(20px,2vw,24px);color:var(--ink-2);letter-spacing:.12em}
+.hero h1 .big{font-size:clamp(34px,4.6vw,58px);letter-spacing:0}
+.gold-text{background:linear-gradient(120deg,var(--gold-hi),var(--gold) 50%,#E9C76A);-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero .sub{font-size:clamp(16px,1.4vw,18px);color:var(--ink-2);max-width:34em}
+.ctas{display:flex;gap:12px;flex-wrap:wrap}
+.proof{display:flex;gap:10px 22px;flex-wrap:wrap;font-size:13.5px;color:var(--muted)}
+.proof span{display:inline-flex;align-items:center;gap:8px}
+.proof svg{width:16px;height:16px;color:var(--emerald)}
+
+.hero-visual{position:relative;min-width:0;padding:24px}
+.hv-main{padding:22px;display:grid;gap:16px}
+.hv-top{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.hv-top b{font-size:14.5px;color:var(--ink-2)}
+.hv-big{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.hv-big strong{font:500 clamp(30px,3.2vw,40px)/1.1 var(--num);letter-spacing:-.01em}
+.up{display:inline-flex;align-items:center;gap:4px;font:500 13px var(--num);color:var(--emerald-hi);background:var(--emerald-soft);border-radius:999px;padding:2px 9px}
+.spark{display:block;width:100%;height:88px}
+.hv-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.hv-row div{border:1px solid var(--line);border-radius:var(--r-sm);padding:10px 12px;display:grid;gap:2px;background:rgba(15,23,42,.35)}
+.hv-row span{font-size:12px;color:var(--muted)}
+.hv-row b{font:500 18px var(--num)}
+.hv-float{position:absolute;padding:12px 14px;display:flex;align-items:center;gap:10px;font-size:13.5px;animation:float 6s ease-in-out infinite}
+.hv-float i{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;flex:none}
+.hv-float i svg{width:18px;height:18px}
+.hv-float small{display:block;color:var(--muted);font-size:12px}
+.f1{top:-30px;right:-4px}
+.f1 i{background:var(--emerald-soft);color:var(--emerald-hi)}
+.f2{bottom:-10px;left:-6px;animation-delay:-3s}
+.f2 i{background:var(--gold-soft);color:var(--gold-hi)}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+@media (max-width:960px){.hero-grid{grid-template-columns:minmax(0,1fr)}.hero-visual{padding:18px 6px}.f1{top:-12px}}
+@media (max-width:600px){section{padding-block:56px}.hero{padding-block:40px 64px}}
+
+/* ---------- 痛點 vs 解法 ---------- */
+.vs{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:20px;align-items:stretch}
+.vs-col{padding:28px;display:grid;gap:18px;align-content:start}
+.vs-col h3{font-size:21px;display:flex;align-items:center;gap:10px}
+.vs-col h3 small{font-size:13px;color:var(--muted)}
+.vs-list{list-style:none;margin:0;padding:0;display:grid;gap:14px}
+.vs-list li{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 14px;padding:16px;border-radius:var(--r-sm);border:1px solid var(--line)}
+.vs-list li i{grid-row:span 2;width:32px;height:32px;border-radius:9px;display:grid;place-items:center}
+.vs-list li i svg{width:17px;height:17px}
+.vs-list b{font-size:16.5px}
+.vs-list span{font-size:14.5px;color:var(--ink-2)}
+.old li i{background:var(--risk-soft);color:var(--risk)}
+.old{background:rgba(30,41,59,.38)}
+.new{border-color:rgba(16,185,129,.35);box-shadow:0 0 0 1px rgba(16,185,129,.08),0 30px 70px -40px rgba(16,185,129,.45)}
+.new li{border-color:rgba(16,185,129,.22);background:rgba(16,185,129,.05)}
+.new li i{background:var(--emerald-soft);color:var(--emerald-hi)}
+.vs-arrow{display:grid;place-items:center}
+.vs-arrow span{width:52px;height:52px;border-radius:50%;display:grid;place-items:center;background:var(--panel);border:1px solid var(--line-2);color:var(--gold-hi);box-shadow:0 0 30px -6px rgba(212,175,55,.5)}
+.vs-arrow svg{width:22px;height:22px}
+@media (max-width:860px){.vs{grid-template-columns:minmax(0,1fr)}.vs-arrow svg{transform:rotate(90deg)}}
+
+/* ---------- 四大模組 ---------- */
+.mods{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px}
+.mod{padding:26px 22px;display:grid;gap:14px;align-content:start;transition:border-color .25s,transform .25s,box-shadow .25s}
+.mod:hover{border-color:rgba(212,175,55,.45);transform:translateY(-3px);box-shadow:0 0 0 1px rgba(212,175,55,.12),0 30px 60px -36px rgba(212,175,55,.45)}
+.mod-ic{width:48px;height:48px;border-radius:13px;display:grid;place-items:center;background:linear-gradient(145deg,rgba(212,175,55,.2),rgba(212,175,55,.04));border:1px solid rgba(212,175,55,.35);color:var(--gold-hi)}
+.mod-ic svg{width:24px;height:24px}
+.mod h3{font-size:19px;line-height:1.45}
+.mod .en{font:400 12.5px var(--num);color:var(--muted);letter-spacing:0}
+.mod p{font-size:14.5px;color:var(--ink-2)}
+.mod ul{list-style:none;margin:4px 0 0;padding:14px 0 0;border-top:1px solid var(--line);display:grid;gap:8px;font-size:14px;color:var(--ink-2)}
+.mod li{display:flex;gap:10px;align-items:flex-start}
+.mod li::before{content:"";flex:none;width:6px;height:6px;margin-top:9px;border-radius:50%;background:var(--emerald)}
+@media (max-width:1080px){.mods{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:600px){.mods{grid-template-columns:minmax(0,1fr)}}
+
+/* ---------- 儀表板預覽 ---------- */
+.dash{padding:0;overflow:hidden}
+.dash-bar{display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--line);background:rgba(15,23,42,.5)}
+.dash-bar i{width:10px;height:10px;border-radius:50%;background:var(--faint)}
+.dash-bar i:nth-child(1){background:#F87171}.dash-bar i:nth-child(2){background:#FBBF24}.dash-bar i:nth-child(3){background:#34D399}
+.dash-bar span{margin-left:12px;font:400 12.5px var(--num);color:var(--muted)}
+.dash-bar .demo-tag{margin-left:auto}
+.dash-body{display:grid;grid-template-columns:200px minmax(0,1fr);min-height:520px}
+.dash-side{border-right:1px solid var(--line);padding:18px 12px;display:grid;gap:4px;align-content:start;font-size:14px;color:var(--muted)}
+.dash-side span{padding:8px 12px;border-radius:8px}
+.dash-side span.on{background:var(--gold-soft);color:var(--gold-hi)}
+.dash-main{padding:22px;display:grid;gap:18px;min-width:0}
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.kpi{border:1px solid var(--line);border-radius:12px;padding:16px;display:grid;gap:6px;background:rgba(15,23,42,.4)}
+.kpi span{font-size:13px;color:var(--muted)}
+.kpi b{font:500 26px/1.15 var(--num);letter-spacing:-.01em}
+.kpi b small{font:400 13px var(--sans);color:var(--muted);margin-left:4px}
+.kpi em{font-style:normal;font:500 12.5px var(--num)}
+.kpi em.g{color:var(--emerald-hi)}
+.kpi em.w{color:#FBBF24}
+.kpi.hl{border-color:rgba(212,175,55,.4);background:linear-gradient(160deg,rgba(212,175,55,.12),rgba(15,23,42,.4) 60%)}
+.kpi.hl b{color:var(--gold-hi)}
+.dash-grid{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);gap:14px}
+.panel{border:1px solid var(--line);border-radius:12px;padding:16px 18px;background:rgba(15,23,42,.4);display:grid;gap:12px;min-width:0;align-content:start}
+.panel-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.panel-head b{font-size:15px}
+.seg{display:inline-flex;padding:3px;border-radius:999px;border:1px solid var(--line-2);gap:2px}
+.seg button{border:0;background:none;color:var(--muted);font-size:13px;padding:4px 12px;border-radius:999px;cursor:pointer;min-height:30px}
+.seg button[aria-pressed="true"]{background:var(--panel);color:var(--ink);box-shadow:0 0 0 1px var(--line-2)}
+.chart svg{display:block;width:100%;height:auto}
+.chart .gl{stroke:var(--line);stroke-width:1}
+.chart .tk{fill:var(--faint);font:400 11px var(--num)}
+.chart .ln{fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.chart .dot{stroke:var(--panel);stroke-width:2}
+.chart .tip-l{stroke:var(--line-2);stroke-dasharray:3 3}
+.chart.draw .ln{stroke-dasharray:1200;stroke-dashoffset:1200;animation:draw 1.6s cubic-bezier(.2,.8,.2,1) forwards}
+@keyframes draw{to{stroke-dashoffset:0}}
+.legend{display:flex;gap:14px;font-size:12.5px;color:var(--muted)}
+.legend i{display:inline-block;width:14px;height:2px;border-radius:1px;margin-right:6px;vertical-align:4px}
+.tasks{list-style:none;margin:0;padding:0;display:grid}
+.tasks li{display:grid;grid-template-columns:auto minmax(0,1fr);gap:2px 10px;padding:10px 0;border-top:1px solid var(--line);font-size:14px}
+.tasks li:first-child{border-top:0;padding-top:0}
+.tasks span{font-size:12.5px;color:var(--muted)}
+.pri{grid-row:span 2;align-self:center;justify-self:start;font-size:12px;border-radius:999px;padding:1px 9px}
+.pri.h{color:#FCA5A5;background:var(--risk-soft)}
+.pri.m{color:#FCD34D;background:rgba(251,191,36,.1)}
+.pri.l{color:var(--ink-2);background:rgba(148,163,184,.1)}
+@media (max-width:980px){.dash-body{grid-template-columns:minmax(0,1fr)}.dash-side{display:none}.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.dash-grid{grid-template-columns:minmax(0,1fr)}}
+
+/* ---------- 試算器 ---------- */
+.calc{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:20px;align-items:start}
+.inputs{padding:26px;display:grid;gap:22px}
+.inputs h3{font-size:18px}
+.field{display:grid;gap:10px}
+.field-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.field label{font-size:14.5px;color:var(--ink-2)}
+.field output{font:500 18px var(--num);color:var(--ink)}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:6px;border-radius:3px;background:linear-gradient(90deg,var(--gold) var(--p,50%),rgba(148,163,184,.22) var(--p,50%));outline-offset:6px}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:var(--ink);border:4px solid var(--gold);box-shadow:0 0 14px rgba(212,175,55,.6);cursor:pointer}
+input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:var(--ink);border:4px solid var(--gold);cursor:pointer}
+.assume{font-size:13px;color:var(--muted);border-top:1px solid var(--line);padding-top:14px;display:grid;gap:4px}
+.results{display:grid;gap:16px}
+.res-pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.res{padding:22px;display:grid;gap:10px;align-content:start}
+.res h3{font-size:16px;color:var(--ink-2);display:flex;align-items:center;gap:8px}
+.res .val{font:500 clamp(26px,2.8vw,34px)/1.15 var(--num);letter-spacing:-.01em}
+.res .val small{font:400 14px var(--sans);color:var(--muted);margin-left:4px}
+.res dl{margin:0;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;font-size:13.5px;color:var(--ink-2)}
+.res dt{color:var(--muted)}
+.res dd{margin:0;text-align:right;font-family:var(--num);font-variant-numeric:tabular-nums}
+.res.old{opacity:.92}
+.res.new{border-color:rgba(16,185,129,.4);box-shadow:0 0 0 1px rgba(16,185,129,.1),0 30px 70px -40px rgba(16,185,129,.55)}
+.res.new .val{color:var(--emerald-hi)}
+.gain{padding:20px 22px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;border-color:rgba(212,175,55,.4)}
+.gain p{color:var(--ink-2);font-size:15px}
+.gain strong{font:500 clamp(32px,3.6vw,46px)/1 var(--num)}
+.bars{display:grid;gap:8px}
+.bar{display:grid;grid-template-columns:96px minmax(0,1fr) auto;gap:10px;align-items:center;font-size:13px;color:var(--muted)}
+.bar div{height:10px;border-radius:5px;background:rgba(148,163,184,.12);overflow:hidden}
+.bar i{display:block;height:100%;border-radius:5px;transition:width .4s cubic-bezier(.2,.8,.2,1)}
+.bar b{font:500 13px var(--num);color:var(--ink-2)}
+@media (max-width:960px){.calc{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:560px){.res-pair{grid-template-columns:minmax(0,1fr)}.bar{grid-template-columns:72px minmax(0,1fr) auto}}
+
+/* ---------- 信任指標 ---------- */
+.trust{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+.stat{padding:26px;display:grid;gap:6px}
+.stat b{font:500 clamp(34px,4vw,48px)/1.1 var(--num);letter-spacing:-.01em}
+.stat b small{font:400 16px var(--sans);color:var(--muted);margin-left:4px}
+.stat span{color:var(--ink-2)}
+.stat .stars{color:var(--gold-hi);letter-spacing:2px;font-size:15px}
+.note-line{margin-top:16px;font-size:13px;color:var(--muted);display:flex;gap:8px;align-items:center}
+.logos{margin-top:28px;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px}
+.logos span{height:64px;border:1px dashed var(--line-2);border-radius:12px;display:grid;place-items:center;color:var(--faint);font-size:13.5px;letter-spacing:.06em}
+@media (max-width:860px){.trust{grid-template-columns:minmax(0,1fr)}.logos{grid-template-columns:repeat(3,minmax(0,1fr))}}
+
+/* ---------- 底部 CTA 與表單 ---------- */
+.cta{padding:clamp(28px,4vw,48px);display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:clamp(24px,4vw,56px);align-items:center;overflow:hidden}
+.cta::before{content:"";position:absolute;inset:auto -10% -60% 30%;height:120%;background:radial-gradient(closest-side,rgba(212,175,55,.18),transparent);pointer-events:none}
+.cta-copy{display:grid;gap:16px;position:relative}
+.cta-copy h2{font-size:clamp(28px,3.2vw,40px);line-height:1.35}
+.cta-copy p{color:var(--ink-2)}
+form{position:relative;display:grid;gap:14px}
+.f{display:grid;gap:6px;font-size:14px;color:var(--ink-2)}
+.f input,.f select{width:100%;min-height:50px;border-radius:12px;border:1px solid var(--line-2);background:rgba(15,23,42,.6);padding:12px 14px;font-size:16px;color:var(--ink)}
+.f input::placeholder{color:var(--faint)}
+.f input:focus,.f select:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(212,175,55,.2)}
+.f .err{font-size:13px;color:#FCA5A5}
+.form-ok{display:flex;gap:12px;align-items:flex-start;padding:14px 16px;border-radius:12px;background:var(--emerald-soft);border:1px solid rgba(16,185,129,.35);color:var(--ink);font-size:14.5px}
+.form-ok svg{width:20px;height:20px;color:var(--emerald-hi);flex:none;margin-top:2px}
+.fine{font-size:12.5px;color:var(--faint)}
+@media (max-width:860px){.cta{grid-template-columns:minmax(0,1fr)}}
+
+footer{border-top:1px solid var(--line);padding-block:28px calc(28px + env(safe-area-inset-bottom,0px));color:var(--faint);font-size:13px}
+footer .wrap{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+
+/* ---------- 浮動客服 ---------- */
+.chat-btn{position:fixed;z-index:40;right:20px;bottom:calc(20px + env(safe-area-inset-bottom,0px));display:inline-flex;align-items:center;gap:10px;min-height:52px;padding:0 20px 0 16px;border-radius:999px;border:1px solid rgba(16,185,129,.5);background:rgba(15,23,42,.85);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);color:var(--ink);cursor:pointer;box-shadow:0 0 0 6px rgba(16,185,129,.08),0 16px 40px -14px rgba(16,185,129,.6)}
+.chat-btn i{width:10px;height:10px;border-radius:50%;background:var(--emerald);box-shadow:0 0 0 0 rgba(16,185,129,.6);animation:ping 2.4s ease-out infinite}
+@keyframes ping{0%{box-shadow:0 0 0 0 rgba(16,185,129,.55)}70%,100%{box-shadow:0 0 0 10px rgba(16,185,129,0)}}
+.chat-panel{position:fixed;z-index:41;right:20px;bottom:calc(84px + env(safe-area-inset-bottom,0px));width:min(340px,calc(100vw - 40px));padding:18px;display:grid;gap:12px;background:var(--glass-2)}
+.chat-panel header{display:flex;justify-content:space-between;align-items:center}
+.chat-panel header b{display:flex;align-items:center;gap:8px}
+.chat-panel header b i{width:8px;height:8px;border-radius:50%;background:var(--emerald)}
+.chat-x{border:0;background:none;color:var(--muted);cursor:pointer;width:36px;height:36px;border-radius:8px;font-size:20px}
+.chat-x:hover{background:rgba(148,163,184,.1);color:var(--ink)}
+.bubble{background:rgba(15,23,42,.6);border:1px solid var(--line);border-radius:14px 14px 14px 4px;padding:12px 14px;font-size:14px;color:var(--ink-2)}
+.quick{display:flex;gap:8px;flex-wrap:wrap}
+.quick button{border:1px solid var(--line-2);background:none;border-radius:999px;padding:6px 12px;font-size:13px;color:var(--ink-2);cursor:pointer}
+.quick button:hover{border-color:var(--gold);color:var(--ink)}
+</style>
+<!-- /build:head -->
+</head>
+<body>
+<!-- build:body -->
+<div class="bg-grid" aria-hidden="true"></div>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14m-6-6 6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="m7 7 10 10M17 7 7 17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3.5 19 6v5.5c0 4.3-3 7.8-7 9-4-1.2-7-4.7-7-9V6z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="m9 12 2.2 2.2L15.5 10" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-sensor" viewBox="0 0 24 24"><path d="M4 11.5 12 5l8 6.5V20H4z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="12" cy="14" r="1.8" fill="currentColor"/><path d="M9 11.5a4.2 4.2 0 0 1 6 0M7.2 9.6a6.8 6.8 0 0 1 9.6 0" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+  <symbol id="i-funnel" viewBox="0 0 24 24"><path d="M4 5h16l-6 7.5V19l-4 1.5v-8z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></symbol>
+  <symbol id="i-cash" viewBox="0 0 24 24"><rect x="3.5" y="6.5" width="17" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="12" r="2.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M6.5 9.5v5M17.5 9.5v5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+  <symbol id="i-sign" viewBox="0 0 24 24"><path d="M6 3.5h8l4 4v13H6z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M14 3.5v4h4M8.5 16.5c1.5-2 2.5-2 3 0s1.5 1 2.5-.5 1.5 0 2 .8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M12 7.5V12l3 2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M8.5 5.8v12.4l9.8-6.2z" fill="currentColor"/></symbol>
+</svg>
+
+<header class="nav">
+  <div class="wrap nav-in">
+    <a class="logo" href="#top" aria-label="亮燈首頁"><i aria-hidden="true"></i><span><b>亮燈</b><br><span>智慧空屋託管平台</span></span></a>
+    <nav class="links" aria-label="頁面段落">
+      <a href="#pain">痛點與解法</a><a href="#modules">核心模組</a><a href="#dashboard">儀表板</a><a href="#calc">收益試算</a><a href="#trust">合作業者</a>
+    </nav>
+    <a class="btn btn-gold btn-sm" href="#demo">預約 Demo</a>
+  </div>
+</header>
+
+<main id="top">
+  <!-- 1. Hero -->
+  <section class="hero">
+    <div class="wrap hero-grid">
+      <div class="hero-copy">
+        <span class="kicker">專為包租代管業者打造</span>
+        <h1><span class="brand">智慧空屋託管平台</span><span class="big">精準活化閒置資產，<br>讓物業管理效率提升 <span class="gold-text num">200%</span></span></h1>
+        <p class="sub">整合屋況巡檢、自動化租金結算、線上簽約與多元招租管道，專為包租代管業者打造的智慧管理系統。</p>
+        <div class="ctas">
+          <a class="btn btn-gold" href="#demo">預約 Demo 演示<svg aria-hidden="true"><use href="#i-arrow"/></svg></a>
+          <a class="btn" href="#dashboard"><svg aria-hidden="true"><use href="#i-play"/></svg>查看業者儀表板</a>
+        </div>
+        <div class="proof"><span><svg aria-hidden="true"><use href="#i-shield"/></svg>資料加密與權限分級</span><span><svg aria-hidden="true"><use href="#i-check"/></svg>符合租賃住宅管理條例流程</span><span><svg aria-hidden="true"><use href="#i-check"/></svg>14 天導入</span></div>
+      </div>
+
+      <div class="hero-visual" aria-label="平台示意畫面">
+        <div class="glass ticks hv-main">
+          <div class="hv-top"><b>本月預計租金收益</b><span class="demo-tag">示意資料</span></div>
+          <div class="hv-big"><strong class="num">NT$ 8,420,000</strong><span class="up num">▲ 12.6%</span></div>
+          <svg class="spark" viewBox="0 0 400 88" preserveAspectRatio="none" aria-hidden="true">
+            <defs><linearGradient id="sg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#10B981" stop-opacity=".35"/><stop offset="1" stop-color="#10B981" stop-opacity="0"/></linearGradient></defs>
+            <path d="M0 70 L36 64 L72 66 L108 55 L144 58 L180 46 L216 48 L252 36 L288 38 L324 26 L360 22 L400 12 L400 88 L0 88Z" fill="url(#sg)"/>
+            <path d="M0 70 L36 64 L72 66 L108 55 L144 58 L180 46 L216 48 L252 36 L288 38 L324 26 L360 22 L400 12" fill="none" stroke="#34D399" stroke-width="2.2" vector-effect="non-scaling-stroke"/>
+          </svg>
+          <div class="hv-row">
+            <div><span>託管戶數</span><b class="num">1,248</b></div>
+            <div><span>平均出租率</span><b class="num">96.4%</b></div>
+            <div><span>平均空置</span><b class="num">11 天</b></div>
+          </div>
+        </div>
+        <div class="glass hv-float f1"><i><svg aria-hidden="true"><use href="#i-sign"/></svg></i><div>竹北 A12 完成線上簽約<small>3 分鐘前</small></div></div>
+        <div class="glass hv-float f2"><i><svg aria-hidden="true"><use href="#i-sensor"/></svg></i><div>新豐 B07 漏水感測已派工<small>維修師傅 14:30 到場</small></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2. 痛點 vs 解法 -->
+  <section id="pain">
+    <div class="wrap">
+      <div class="sec-head"><span class="kicker">痛點與解法</span><h2>同樣一百戶，管理方式決定你的利潤</h2><p>人工託管的成本藏在巡房的車程、對不上的帳和空著的每一天裡。</p></div>
+      <div class="vs">
+        <div class="glass vs-col old">
+          <h3>傳統人工託管 <small>常見情況</small></h3>
+          <ul class="vs-list">
+            <li><i><svg aria-hidden="true"><use href="#i-x"/></svg></i><b>巡房耗時</b><span>每戶都要專人跑一趟，拍照、記錄、回辦公室再整理。</span></li>
+            <li><i><svg aria-hidden="true"><use href="#i-x"/></svg></i><b>帳務混亂</b><span>租金、押金、修繕費分散在試算表與匯款紀錄，月底對帳靠人工。</span></li>
+            <li><i><svg aria-hidden="true"><use href="#i-x"/></svg></i><b>空置期長</b><span>房源只掛一兩個平台，看屋與議價全靠電話，空一個月就少一個月收入。</span></li>
+          </ul>
+        </div>
+        <div class="vs-arrow" aria-hidden="true"><span><svg><use href="#i-arrow"/></svg></span></div>
+        <div class="glass vs-col new">
+          <h3>平台智慧託管</h3>
+          <ul class="vs-list">
+            <li><i><svg aria-hidden="true"><use href="#i-check"/></svg></i><b>自動化排程</b><span>依感測器與合約週期自動排巡檢與維修，師傅到場用手機回報。</span></li>
+            <li><i><svg aria-hidden="true"><use href="#i-check"/></svg></i><b>透明化報表</b><span>收租、撥款與支出自動入帳，屋主隨時看得到每一筆。</span></li>
+            <li><i><svg aria-hidden="true"><use href="#i-check"/></svg></i><b>快速匹配租客</b><span>一次上架多個平台，看屋預約與帶看進度在同一個漏斗追蹤。</span></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3. 四大模組 -->
+  <section id="modules">
+    <div class="wrap">
+      <div class="sec-head"><span class="kicker">核心模組</span><h2>四個模組，涵蓋從接案到收租的每一步</h2><p>可以整套導入，也可以從最痛的那一段開始。</p></div>
+      <div class="mods">
+        <article class="glass ticks mod"><span class="mod-ic"><svg aria-hidden="true"><use href="#i-sensor"/></svg></span><div><h3>智慧屋況與 IoT 巡檢</h3><p class="en">Smart Inspection &amp; IoT</p></div><p>漏水、用電、門窗感測即時回報，照片判讀自動產生修繕清單。</p><ul><li>異常自動派工</li><li>巡檢照片與報告存證</li><li>修繕費用估價</li></ul></article>
+        <article class="glass ticks mod"><span class="mod-ic"><svg aria-hidden="true"><use href="#i-funnel"/></svg></span><div><h3>房源招租與多平台聯播</h3><p class="en">Multi-listing &amp; Funnel Tracking</p></div><p>一次編輯，同步上架主要租屋平台，從詢問到簽約全程追蹤。</p><ul><li>多平台一鍵上架</li><li>帶看預約與提醒</li><li>招租漏斗與成交率</li></ul></article>
+        <article class="glass ticks mod"><span class="mod-ic"><svg aria-hidden="true"><use href="#i-cash"/></svg></span><div><h3>自動化金流與財務報表</h3><p class="en">Automated Cashflow &amp; Accounting</p></div><p>虛擬帳號收租、自動對帳、依合約撥款給屋主並開立憑證。</p><ul><li>租金與押金自動對帳</li><li>屋主撥款與明細</li><li>月報與年度報表</li></ul></article>
+        <article class="glass ticks mod"><span class="mod-ic"><svg aria-hidden="true"><use href="#i-sign"/></svg></span><div><h3>數位合約與線上簽署</h3><p class="en">Digital Contract &amp; Compliance</p></div><p>內建定型化契約範本，線上身分驗證與簽署，到期自動提醒續約。</p><ul><li>契約範本與版本管理</li><li>線上簽署與存證</li><li>到期與法規提醒</li></ul></article>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4. 儀表板預覽 -->
+  <section id="dashboard">
+    <div class="wrap">
+      <div class="sec-head"><span class="kicker">業者儀表板</span><h2>一個畫面看懂所有房源的收益與待辦</h2><p>出租率、收益和維修件數每天更新，主管不用再等週報。</p></div>
+      <div class="glass dash">
+        <div class="dash-bar"><i></i><i></i><i></i><span>亮燈後台 / 總覽</span><span class="demo-tag">示意資料</span></div>
+        <div class="dash-body">
+          <div class="dash-side" aria-hidden="true"><span class="on">總覽</span><span>房源</span><span>招租漏斗</span><span>金流</span><span>合約</span><span>維修派工</span><span>報表</span></div>
+          <div class="dash-main">
+            <div class="kpis">
+              <div class="kpi"><span>總託管戶數</span><b class="num" data-count="1248">1,248<small>戶</small></b><em class="num g">▲ 36 戶 本月新增</em></div>
+              <div class="kpi"><span>平均出租率</span><b class="num">96.4<small>%</small></b><em class="num g">▲ 2.1 個百分點</em></div>
+              <div class="kpi hl"><span>本月預計收益</span><b class="num">842<small>萬元</small></b><em class="num g">▲ 12.6% 較上月</em></div>
+              <div class="kpi"><span>待處理維修</span><b class="num">17<small>件</small></b><em class="num w">5 件超過 48 小時</em></div>
+            </div>
+            <div class="dash-grid">
+              <div class="panel">
+                <div class="panel-head"><b id="chartTitle">近 12 個月收益（萬元）</b><div class="seg" role="group" aria-label="切換圖表"><button type="button" data-series="rev" aria-pressed="true">收益</button><button type="button" data-series="occ" aria-pressed="false">出租率</button></div></div>
+                <div class="chart draw" id="chart"></div>
+                <div class="legend" id="legend"></div>
+              </div>
+              <div class="panel">
+                <div class="panel-head"><b>待處理維修</b><span class="demo-tag">17 件</span></div>
+                <ul class="tasks">
+                  <li><span class="pri h">急</span><b>新豐 B07 浴室漏水</b><span>感測器 09:12 回報・已派工</span></li>
+                  <li><span class="pri m">中</span><b>竹北 A03 冷氣不冷</b><span>房客報修・待排師傅</span></li>
+                  <li><span class="pri m">中</span><b>湖口 C11 門鎖故障</b><span>巡檢發現・待報價</span></li>
+                  <li><span class="pri l">低</span><b>竹東 D02 牆面壁癌</b><span>退租點交・排入整理</span></li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5. 試算器 -->
+  <section id="calc">
+    <div class="wrap">
+      <div class="sec-head"><span class="kicker">收益試算</span><h2>拖動看看：同樣的房源，一年差多少</h2><p>輸入你的託管規模，左右對照自主管理與平台託管的年度淨收益。</p></div>
+      <div class="calc">
+        <div class="glass inputs">
+          <h3>你的託管規模</h3>
+          <div class="field"><div class="field-top"><label for="units">託管戶數</label><output class="num" id="unitsOut" for="units"></output></div><input id="units" type="range" min="10" max="500" step="10" value="120"></div>
+          <div class="field"><div class="field-top"><label for="rent">平均月租</label><output class="num" id="rentOut" for="rent"></output></div><input id="rent" type="range" min="8000" max="40000" step="1000" value="18000"></div>
+          <div class="field"><div class="field-top"><label for="vac">目前每戶每年空置</label><output class="num" id="vacOut" for="vac"></output></div><input id="vac" type="range" min="0.5" max="4" step="0.5" value="2.5"></div>
+          <div class="field"><div class="field-top"><label for="cost">每戶每月管理成本</label><output class="num" id="costOut" for="cost"></output></div><input id="cost" type="range" min="500" max="3000" step="100" value="1500"></div>
+          <div class="assume"><span>試算假設（示意，可依實際情況調整）：</span><span>平台託管空置期縮短 60%、智慧定價租金 +3%、管理成本降低 35%、平台服務費每戶每月 300 元。</span></div>
+        </div>
+        <div class="results">
+          <div class="res-pair">
+            <div class="glass res old"><h3>自主管理／傳統代管</h3><p class="val num" id="oldVal"></p><dl id="oldDl"></dl></div>
+            <div class="glass res new"><h3>使用本平台託管</h3><p class="val num" id="newVal"></p><dl id="newDl"></dl></div>
+          </div>
+          <div class="glass ticks gain">
+            <div><p>年化淨收益提升</p><p class="fine" id="gainNote"></p></div>
+            <strong class="gold-text num" id="gainPct"></strong>
+          </div>
+          <div class="glass bars" style="padding:18px 20px" id="bars" aria-hidden="true"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6. 信任指標 -->
+  <section id="trust">
+    <div class="wrap">
+      <div class="sec-head"><span class="kicker">合作業者</span><h2>和在地包租代管業者一起把空屋找回來</h2></div>
+      <div class="trust">
+        <div class="glass ticks stat"><b class="num">32<small>家</small></b><span>合作的物業管理與包租代管公司</span></div>
+        <div class="glass ticks stat"><b class="num">4,800<small>戶</small></b><span>平台上管理中的房源</span></div>
+        <div class="glass ticks stat"><b class="num">4.8<small>/ 5</small></b><span class="stars" aria-hidden="true">★★★★★</span><span>業者使用滿意度</span></div>
+      </div>
+      <p class="note-line"><span class="demo-tag">示意數字</span>上線後換成實際合作家數、房源數與問卷結果。</p>
+      <div class="logos" aria-label="合作夥伴標誌位置（示意）"><span>合作夥伴 A</span><span>合作夥伴 B</span><span>合作夥伴 C</span><span>合作夥伴 D</span><span>合作夥伴 E</span><span>合作夥伴 F</span></div>
+    </div>
+  </section>
+
+  <!-- 7. 底部 CTA -->
+  <section id="demo">
+    <div class="wrap">
+      <div class="glass ticks cta">
+        <div class="cta-copy">
+          <span class="kicker">預約 Demo</span>
+          <h2>30 分鐘，看懂你的房源能多賺多少</h2>
+          <p>留下聯絡方式，顧問會在一個工作天內與你聯繫，用你自己的房源資料示範。</p>
+        </div>
+        <form id="form" novalidate>
+          <label class="f" for="co">公司名稱<input id="co" name="co" type="text" autocomplete="organization" placeholder="例如：竹北包租代管有限公司" required><span class="err" id="coErr" hidden>請填寫公司名稱</span></label>
+          <label class="f" for="size">託管房源數量<select id="size" name="size"><option value="1-20">20 戶以下</option><option value="21-100" selected>21–100 戶</option><option value="101-500">101–500 戶</option><option value="500+">500 戶以上</option></select></label>
+          <label class="f" for="tel">聯絡電話<input id="tel" name="tel" type="tel" autocomplete="tel" inputmode="tel" placeholder="例如：0912-345-678" required><span class="err" id="telErr" hidden>請填寫可以聯絡到你的電話</span></label>
+          <button class="btn btn-gold" type="submit">預約 Demo 演示<svg aria-hidden="true"><use href="#i-arrow"/></svg></button>
+          <div class="form-ok" id="ok" role="status" hidden><svg aria-hidden="true"><use href="#i-check"/></svg><span>已收到預約（預覽版不會真的送出）。正式上線後，顧問會在一個工作天內來電。</span></div>
+          <p class="fine">送出即表示同意我們依隱私權政策聯絡你。</p>
+        </form>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer><div class="wrap"><span>亮燈智慧空屋託管平台・介面預覽</span><span>畫面中的數字皆為示意資料</span></div></footer>
+
+<button type="button" class="chat-btn" id="chatBtn" aria-expanded="false" aria-controls="chat"><i aria-hidden="true"></i>線上諮詢</button>
+<div class="glass chat-panel" id="chat" role="dialog" aria-label="線上諮詢" hidden>
+  <header><b><i aria-hidden="true"></i>亮燈顧問</b><button type="button" class="chat-x" id="chatX" aria-label="關閉">×</button></header>
+  <p class="bubble">你好！想了解哪一部分？選一個主題，我們會在上班時間（週一至週五 9:00–18:00）回覆你。</p>
+  <div class="quick"><button type="button">導入要多久？</button><button type="button">費用怎麼算？</button><button type="button">可以串接現有系統嗎？</button></div>
+  <p class="fine" id="chatNote">預覽版尚未接上客服。</p>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  const $ = s => document.querySelector(s);
+  const nf = new Intl.NumberFormat('zh-TW');
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ---------- 儀表板趨勢圖（示意資料） ---------- */
+  const MONTHS = ['11月', '12月', '1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月'];
+  const SERIES = {
+    rev: { title: '近 12 個月收益（萬元）', unit: '萬', lines: [
+      { name: '實際收益', color: '#34D399', data: [598, 612, 640, 618, 671, 690, 702, 731, 748, 771, 748, 842] },
+      { name: '目標', color: '#D4AF37', data: [620, 630, 640, 650, 665, 680, 695, 710, 725, 740, 760, 780], dash: true } ] },
+    occ: { title: '近 12 個月平均出租率（%）', unit: '%', lines: [
+      { name: '平台託管房源', color: '#34D399', data: [88.2, 89.0, 90.4, 89.6, 91.8, 92.5, 93.1, 94.0, 94.6, 95.2, 94.3, 96.4] },
+      { name: '業界平均（示意）', color: '#94A3B8', data: [85, 85, 86, 85, 86, 86, 87, 87, 87, 88, 87, 88], dash: true } ] }
+  };
+  let current = 'rev';
+  function drawChart(animate) {
+    const box = $('#chart'), s = SERIES[current];
+    const W = Math.max(300, Math.round(box.clientWidth || 600)), H = 220, L = 40, R = 12, T = 12, B = 26;
+    const all = s.lines.flatMap(l => l.data);
+    let lo = Math.min(...all), hi = Math.max(...all);
+    const step = current === 'rev' ? 100 : 5;
+    lo = Math.floor(lo / step) * step; hi = Math.ceil(hi / step) * step;
+    const x = i => L + (W - L - R) * i / (MONTHS.length - 1), y = v => T + (H - T - B) * (1 - (v - lo) / (hi - lo));
+    let svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${s.title}">`;
+    for (let v = lo; v <= hi; v += step) svg += `<line class="gl" x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"/><text class="tk" x="${L - 8}" y="${y(v) + 4}" text-anchor="end">${v}</text>`;
+    const every = W < 480 ? 3 : 1;
+    MONTHS.forEach((m, i) => { if (i % every === 0 || i === MONTHS.length - 1) svg += `<text class="tk" x="${x(i)}" y="${H - 6}" text-anchor="middle">${m}</text>`; });
+    s.lines.forEach(l => {
+      svg += `<path class="ln" d="${l.data.map((v, i) => (i ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(v).toFixed(1)).join(' ')}" stroke="${l.color}"${l.dash ? ' stroke-dasharray="5 5" style="animation:none;stroke-dasharray:5 5;stroke-dashoffset:0"' : ''}/>`;
+    });
+    const last = s.lines[0].data.length - 1;
+    svg += `<circle class="dot" cx="${x(last)}" cy="${y(s.lines[0].data[last])}" r="5" fill="${s.lines[0].color}"/>`;
+    box.innerHTML = svg + '</svg>';
+    box.classList.toggle('draw', !!animate && !reduce);
+    $('#chartTitle').textContent = s.title;
+    $('#legend').innerHTML = s.lines.map(l => `<span><i style="background:${l.color}"></i>${l.name}</span>`).join('');
+  }
+  document.querySelectorAll('[data-series]').forEach(b => b.addEventListener('click', () => {
+    current = b.dataset.series;
+    document.querySelectorAll('[data-series]').forEach(o => o.setAttribute('aria-pressed', String(o === b)));
+    drawChart(true);
+  }));
+
+  /* ---------- 收益試算 ---------- */
+  const A = { vacCut: 0.6, rentUp: 0.03, costCut: 0.35, fee: 300 };
+  const money = v => 'NT$ ' + nf.format(Math.round(v));
+  const wan = v => nf.format(Math.round(v / 10000)) + ' 萬';
+  function calc() {
+    const units = +$('#units').value, rent = +$('#rent').value, vac = +$('#vac').value, cost = +$('#cost').value;
+    document.querySelectorAll('input[type=range]').forEach(r => r.style.setProperty('--p', ((r.value - r.min) / (r.max - r.min) * 100) + '%'));
+    $('#unitsOut').textContent = units + ' 戶';
+    $('#rentOut').textContent = 'NT$ ' + nf.format(rent);
+    $('#vacOut').textContent = vac + ' 個月';
+    $('#costOut').textContent = 'NT$ ' + nf.format(cost);
+    const oldRent = units * rent * (12 - vac), oldCost = units * cost * 12, oldNet = oldRent - oldCost;
+    const vac2 = vac * (1 - A.vacCut), rent2 = rent * (1 + A.rentUp);
+    const newRent = units * rent2 * (12 - vac2), newCost = units * cost * (1 - A.costCut) * 12, fee = units * A.fee * 12, newNet = newRent - newCost - fee;
+    $('#oldVal').innerHTML = `${wan(oldNet)}<small>／年</small>`;
+    $('#newVal').innerHTML = `${wan(newNet)}<small>／年</small>`;
+    $('#oldDl').innerHTML = `<dt>租金收入</dt><dd>${money(oldRent)}</dd><dt>空置損失</dt><dd>${money(units * rent * vac)}</dd><dt>管理成本</dt><dd>${money(oldCost)}</dd>`;
+    $('#newDl').innerHTML = `<dt>租金收入</dt><dd>${money(newRent)}</dd><dt>空置損失</dt><dd>${money(units * rent2 * vac2)}</dd><dt>管理成本＋服務費</dt><dd>${money(newCost + fee)}</dd>`;
+    const pct = oldNet > 0 ? (newNet - oldNet) / oldNet * 100 : 0;
+    $('#gainPct').textContent = (pct >= 0 ? '+' : '') + pct.toFixed(1) + '%';
+    $('#gainNote').textContent = `每年多出約 ${wan(newNet - oldNet)}；空置從 ${vac} 個月縮短到 ${vac2.toFixed(1)} 個月`;
+    const max = Math.max(oldNet, newNet, 1);
+    $('#bars').innerHTML = [['傳統代管', oldNet, '#64748B'], ['平台託管', newNet, '#10B981']].map(([n, v, c]) => `<div class="bar"><span>${n}</span><div><i style="width:${Math.max(0, v) / max * 100}%;background:${c}"></i></div><b class="num">${wan(v)}</b></div>`).join('');
+  }
+  ['units', 'rent', 'vac', 'cost'].forEach(id => $('#' + id).addEventListener('input', calc));
+
+  /* ---------- 表單（預覽版不送出） ---------- */
+  $('#form').addEventListener('submit', e => {
+    e.preventDefault();
+    const co = $('#co').value.trim(), tel = $('#tel').value.trim();
+    $('#coErr').hidden = !!co; $('#telErr').hidden = !!tel;
+    if (!co) { $('#co').focus(); return; }
+    if (!tel) { $('#tel').focus(); return; }
+    $('#ok').hidden = false;
+  });
+
+  /* ---------- 浮動客服 ---------- */
+  const setChat = on => { $('#chat').hidden = !on; $('#chatBtn').setAttribute('aria-expanded', String(on)); if (on) $('#chatX').focus(); };
+  $('#chatBtn').addEventListener('click', () => setChat($('#chat').hidden));
+  $('#chatX').addEventListener('click', () => { setChat(false); $('#chatBtn').focus(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#chat').hidden) { setChat(false); $('#chatBtn').focus(); } });
+  document.querySelectorAll('.quick button').forEach(b => b.addEventListener('click', () => { $('#chatNote').textContent = `已記下你的問題「${b.textContent}」。預覽版尚未接上客服，正式版會由顧問回覆。`; }));
+
+  let rt = 0;
+  addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => drawChart(false), 150); });
+  drawChart(true);
+  calc();
+})();
+</script>
+<!-- /build:body -->
+</body>
+</html>
