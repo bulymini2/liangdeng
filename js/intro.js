@@ -10,17 +10,17 @@
   const X0 = -1400, X1 = W + 1400;
   // 六棟房子，合計 100 戶（一扇窗一戶）。最高的大樓放在右邊，左邊低矮，讓出標題的位置。
   const BUILDINGS = [
-    { x: 50, w: 190, floors: 5, cols: 4, kind: 'apt', fh: 40, tone: '#16223A', shed: true },
-    { x: 256, w: 110, floors: 4, cols: 2, kind: 'house', fh: 42, tone: '#1B2944' },
-    { x: 382, w: 170, floors: 5, cols: 3, kind: 'apt', fh: 40, tone: '#1A2742', plate: true },
-    { x: 568, w: 200, floors: 6, cols: 3, kind: 'apt', fh: 40, tone: '#17233C', shed: true },
-    { x: 784, w: 230, floors: 11, cols: 3, kind: 'tower', fh: 34, tone: '#141F36' },
-    { x: 1030, w: 120, floors: 3, cols: 2, kind: 'house', fh: 42, tone: '#1C2A45' }
+    { x: 50, w: 190, floors: 5, cols: 4, kind: 'apt', fh: 40, tone: '#E9DAC3', shed: true },
+    { x: 256, w: 110, floors: 4, cols: 2, kind: 'house', fh: 42, tone: '#D9B9A1' },
+    { x: 382, w: 170, floors: 5, cols: 3, kind: 'apt', fh: 40, tone: '#CCD8E2', plate: true },
+    { x: 568, w: 200, floors: 6, cols: 3, kind: 'apt', fh: 40, tone: '#EDE3D3', shed: true },
+    { x: 784, w: 230, floors: 11, cols: 3, kind: 'tower', fh: 34, tone: '#BAC6D3' },
+    { x: 1030, w: 120, floors: 3, cols: 2, kind: 'house', fh: 42, tone: '#E6CBA9' }
   ];
   // 沒亮燈的 10 戶：[棟, 樓層（0 是最上層）, 欄]，依點亮順序排列。
   // 都在橫座標 270–930 之間，手機裁掉兩側也看得到。
   const DARK = [[4, 5, 1], [2, 2, 0], [3, 1, 0], [1, 1, 1], [4, 8, 1], [2, 0, 1], [4, 2, 0], [3, 4, 0], [2, 4, 2], [4, 10, 0]];
-  const SIGN = ['#C2503E', '#2D8A80', '#C4973A', '#3D63B5'];
+  const SIGN = ['#D9573F', '#2F9C8F', '#E3A92B', '#3F6FC2'];
 
   function rng(seed) { return () => (seed = (seed * 9301 + 49297) % 233280) / 233280; }
   const f1 = n => Math.round(n * 10) / 10;
@@ -39,9 +39,12 @@
     // 遠方的樓（主街兩側也有，寬螢幕才不會空著）
     for (let x = X0; x < X1; x += 70 + r() * 60) {
       const w = 60 + r() * 70, h = 150 + r() * 170, y = GROUND - h;
-      back += `<rect x="${f1(x)}" y="${f1(y)}" width="${f1(w)}" height="${f1(h)}" fill="#0F182C"/>`;
-      for (let k = 0; k < 7; k++) if (r() < 0.6) back += `<rect x="${f1(x + 8 + r() * (w - 16))}" y="${f1(y + 10 + r() * (h - 30))}" width="3" height="4" fill="${r() < 0.5 ? '#8A6A3D' : '#3B4560'}" opacity=".55"/>`;
+      back += `<rect x="${f1(x)}" y="${f1(y)}" width="${f1(w)}" height="${f1(h)}" fill="#B9C7D5" opacity=".7"/>`;
+      for (let k = 0; k < 7; k++) if (r() < 0.6) back += `<rect x="${f1(x + 8 + r() * (w - 16))}" y="${f1(y + 10 + r() * (h - 30))}" width="4" height="5" fill="${r() < 0.5 ? '#F6D08A' : '#98A9BB'}" opacity=".8"/>`;
     }
+
+    // 黃昏的太陽，落在大樓後面
+    back = `<circle cx="1010" cy="250" r="74" fill="#FFE1B3"/><circle cx="1010" cy="250" r="118" fill="#FFE1B3" opacity=".35"/>` + back;
 
     let u = 0;
     BUILDINGS.forEach((b, bi) => {
@@ -51,27 +54,27 @@
       // 樓身與磁磚紋
       bodies += `<rect x="${b.x}" y="${top}" width="${b.w}" height="${GROUND - top}" fill="${b.tone}"/>`;
       if (b.kind !== 'tower') bodies += `<rect x="${b.x}" y="${top}" width="${b.w}" height="${GROUND - SHOP_H - top}" fill="url(#${p}Tile)"/>`;
-      bodies += `<rect x="${b.x}" y="${top}" width="${b.w}" height="3" fill="#2A3858"/>`;
+      bodies += `<rect x="${b.x}" y="${top}" width="${b.w}" height="3" fill="#7D6E62" opacity=".35"/><rect x="${b.x + b.w - 6}" y="${top}" width="6" height="${GROUND - SHOP_H - top}" fill="#5C4E44" opacity=".12"/>`;
       // 屋頂
       if (b.kind === 'apt') {
         if (b.shed) {   // 鐵皮加蓋
           const sx = b.x + 14, sw = b.w * 0.55;
-          bodies += `<rect x="${f1(sx)}" y="${top - 20}" width="${f1(sw)}" height="20" fill="#1E2A44"/>`;
-          for (let x = sx + 4; x < sx + sw; x += 6) bodies += `<line x1="${f1(x)}" y1="${top - 20}" x2="${f1(x)}" y2="${top}" stroke="#26344F" stroke-width="1"/>`;
-          bodies += `<polygon points="${f1(sx - 4)},${top - 19} ${f1(sx + sw / 2)},${top - 31} ${f1(sx + sw + 4)},${top - 19}" fill="#24324F"/>`;
+          bodies += `<rect x="${f1(sx)}" y="${top - 20}" width="${f1(sw)}" height="20" fill="#A7B3BF"/>`;
+          for (let x = sx + 4; x < sx + sw; x += 6) bodies += `<line x1="${f1(x)}" y1="${top - 20}" x2="${f1(x)}" y2="${top}" stroke="#8E9AA6" stroke-width="1"/>`;
+          bodies += `<polygon points="${f1(sx - 4)},${top - 19} ${f1(sx + sw / 2)},${top - 31} ${f1(sx + sw + 4)},${top - 19}" fill="#8A97A4"/>`;
         }
         const tx = b.x + b.w - 50;   // 水塔
         for (let k = 0; k < 2; k++) {
           const x = tx + k * 22;
-          bodies += `<rect x="${x + 3}" y="${top - 8}" width="2" height="8" fill="#2B3854"/><rect x="${x + 13}" y="${top - 8}" width="2" height="8" fill="#2B3854"/>` +
-            `<rect x="${x}" y="${top - 25}" width="18" height="17" rx="4" fill="#2C3A58"/><rect x="${x + 2}" y="${top - 23}" width="4" height="13" rx="2" fill="#3A4A6C" opacity=".7"/>`;
+          bodies += `<rect x="${x + 3}" y="${top - 8}" width="2" height="8" fill="#8C97A3"/><rect x="${x + 13}" y="${top - 8}" width="2" height="8" fill="#8C97A3"/>` +
+            `<rect x="${x}" y="${top - 25}" width="18" height="17" rx="4" fill="#EEF2F5" stroke="#9AA6B2" stroke-width="1"/><rect x="${x + 3}" y="${top - 22}" width="3" height="11" rx="1.5" fill="#FFFFFF"/>`;
         }
       } else if (b.kind === 'tower') {
         const cx = b.x + b.w / 2;
-        bodies += `<rect x="${cx - 32}" y="${top - 26}" width="64" height="26" fill="#18233B"/><line x1="${cx + 20}" y1="${top - 26}" x2="${cx + 20}" y2="${top - 62}" stroke="#2E3D5C" stroke-width="2"/>` +
-          `<circle class="beacon" cx="${cx + 20}" cy="${top - 64}" r="2.6" fill="#FF5A47"/>`;
+        bodies += `<rect x="${cx - 32}" y="${top - 26}" width="64" height="26" fill="#A6B3C1"/><line x1="${cx + 20}" y1="${top - 26}" x2="${cx + 20}" y2="${top - 62}" stroke="#7C8894" stroke-width="2"/>` +
+          `<circle class="beacon" cx="${cx + 20}" cy="${top - 64}" r="2.8" fill="#E5533D"/>`;
       } else {
-        bodies += `<rect x="${b.x - 2}" y="${top - 8}" width="${b.w + 4}" height="8" fill="#24324F"/><rect x="${b.x + b.w - 30}" y="${top - 24}" width="16" height="16" rx="4" fill="#2C3A58"/>`;
+        bodies += `<rect x="${b.x - 2}" y="${top - 8}" width="${b.w + 4}" height="8" fill="#9C7B66"/><rect x="${b.x + b.w - 30}" y="${top - 24}" width="16" height="16" rx="4" fill="#EEF2F5" stroke="#9AA6B2" stroke-width="1"/>`;
       }
       // 窗戶（一扇一戶）
       for (let f = 0; f < b.floors; f++) {
@@ -81,71 +84,69 @@
           const isDark = di !== undefined;
           if (isDark) dark[di] = u;
           const v = r(), fill = v < 0.66 ? 'Warm' : v < 0.86 ? 'Dim' : 'Tv';
-          const curtain = r() < 0.32 ? `<rect x="${f1(r() < 0.5 ? x : x + ww * 0.62)}" y="${f1(y)}" width="${f1(ww * 0.38)}" height="${f1(wh)}" fill="#7A4A16" opacity=".32"/>` : '';
+          const curtain = r() < 0.32 ? `<rect x="${f1(r() < 0.5 ? x : x + ww * 0.62)}" y="${f1(y)}" width="${f1(ww * 0.38)}" height="${f1(wh)}" fill="#C4791E" opacity=".22"/>` : '';
           const glowFill = fill === 'Tv' ? '#7FB4F5' : '#FFB547';
-          glows += `<rect class="g${isDark ? ' dark' : ''}" data-u="${u}" x="${f1(x - 5)}" y="${f1(y - 5)}" width="${f1(ww + 10)}" height="${f1(wh + 10)}" fill="${glowFill}" opacity="${isDark ? 0 : fill === 'Dim' ? 0.32 : 0.48}"/>`;
-          units += `<g class="u${isDark ? ' dark' : ''}" data-u="${u}"><rect class="u-off" x="${f1(x)}" y="${f1(y)}" width="${f1(ww)}" height="${f1(wh)}" rx="1.5" fill="#09101D"/>` +
-            `<line x1="${f1(x + 3)}" y1="${f1(y + wh - 3)}" x2="${f1(x + ww * 0.45)}" y2="${f1(y + 3)}" stroke="#1E2A44" stroke-width="1.4"/>` +
+          if (opts.glow) glows += `<rect class="g${isDark ? ' dark' : ''}" data-u="${u}" x="${f1(x - 5)}" y="${f1(y - 5)}" width="${f1(ww + 10)}" height="${f1(wh + 10)}" fill="${glowFill}" opacity="${isDark ? 0 : fill === 'Dim' ? 0.32 : 0.48}"/>`;
+          units += `<g class="u${isDark ? ' dark' : ''}" data-u="${u}"><rect class="u-off" x="${f1(x)}" y="${f1(y)}" width="${f1(ww)}" height="${f1(wh)}" rx="1.5" fill="#62728A"/>` +
+            `<line x1="${f1(x + 3)}" y1="${f1(y + wh - 3)}" x2="${f1(x + ww * 0.45)}" y2="${f1(y + 3)}" stroke="#8494A9" stroke-width="1.4"/>` +
             `<g class="u-on"><rect x="${f1(x)}" y="${f1(y)}" width="${f1(ww)}" height="${f1(wh)}" rx="1.5" fill="url(#${p}${fill})"/>${curtain}</g>` +
-            `<line x1="${f1(x + ww / 2)}" y1="${f1(y)}" x2="${f1(x + ww / 2)}" y2="${f1(y + wh)}" stroke="#0C1424" stroke-opacity=".5" stroke-width="1.2"/></g>`;
+            `<line x1="${f1(x + ww / 2)}" y1="${f1(y)}" x2="${f1(x + ww / 2)}" y2="${f1(y + wh)}" stroke="#4A4038" stroke-opacity=".35" stroke-width="1.2"/></g>`;
           // 鐵窗、冷氣、陽台欄杆
           if (b.kind !== 'tower' && (f >= b.floors - 2 || r() < 0.35)) {
-            units += `<rect x="${f1(x - 3)}" y="${f1(y - 3)}" width="${f1(ww + 6)}" height="${f1(wh + 6)}" fill="none" stroke="#3A4866" stroke-width="1.3"/>`;
-            for (let bx = x + 3; bx < x + ww; bx += 5) units += `<line x1="${f1(bx)}" y1="${f1(y - 3)}" x2="${f1(bx)}" y2="${f1(y + wh + 3)}" stroke="#2F3C58" stroke-width=".9" opacity=".8"/>`;
+            units += `<rect x="${f1(x - 3)}" y="${f1(y - 3)}" width="${f1(ww + 6)}" height="${f1(wh + 6)}" fill="none" stroke="#7D8794" stroke-width="1.3"/>`;
+            for (let bx = x + 3; bx < x + ww; bx += 5) units += `<line x1="${f1(bx)}" y1="${f1(y - 3)}" x2="${f1(bx)}" y2="${f1(y + wh + 3)}" stroke="#7D8794" stroke-width=".9" opacity=".75"/>`;
           }
-          if (b.kind === 'apt' && r() < 0.32) units += `<rect x="${f1(x + ww - 15)}" y="${f1(y + wh + 5)}" width="15" height="8" rx="1" fill="#2A3753"/><circle cx="${f1(x + ww - 7.5)}" cy="${f1(y + wh + 9)}" r="2.6" fill="none" stroke="#3E4D6E" stroke-width="1"/>`;
-          if (b.kind === 'tower') units += `<line x1="${f1(x - 4)}" y1="${f1(y + wh + 5)}" x2="${f1(x + ww + 4)}" y2="${f1(y + wh + 5)}" stroke="#2C3A57" stroke-width="2"/>`;
+          if (b.kind === 'apt' && r() < 0.32) units += `<rect x="${f1(x + ww - 15)}" y="${f1(y + wh + 5)}" width="15" height="8" rx="1" fill="#F5F4F1" stroke="#A3ABB4" stroke-width=".8"/><circle cx="${f1(x + ww - 7.5)}" cy="${f1(y + wh + 9)}" r="2.6" fill="none" stroke="#A3ABB4" stroke-width="1"/>`;
+          if (b.kind === 'tower') units += `<line x1="${f1(x - 4)}" y1="${f1(y + wh + 5)}" x2="${f1(x + ww + 4)}" y2="${f1(y + wh + 5)}" stroke="#9DA9B6" stroke-width="2"/>`;
           u++;
         }
       }
       // 一樓：騎樓、店面或鐵捲門、招牌
       const sy = GROUND - SHOP_H;
-      front += `<rect x="${b.x}" y="${sy}" width="${b.w}" height="${SHOP_H}" fill="#0B1220"/><rect x="${b.x}" y="${sy}" width="${b.w}" height="6" fill="#1F2B46"/>`;
+      front += `<rect x="${b.x}" y="${sy}" width="${b.w}" height="${SHOP_H}" fill="#6B5E55"/><rect x="${b.x}" y="${sy}" width="${b.w}" height="6" fill="#8D7F73"/>`;
       const bays = Math.max(1, Math.round(b.w / 72)), bw = b.w / bays;
       for (let k = 0; k < bays; k++) {
         const bx = b.x + k * bw;
         if (r() < 0.55) front += `<rect x="${f1(bx + 8)}" y="${sy + 14}" width="${f1(bw - 16)}" height="${SHOP_H - 14}" fill="url(#${p}Shop)"/>`;
         else {
-          front += `<rect x="${f1(bx + 8)}" y="${sy + 14}" width="${f1(bw - 16)}" height="${SHOP_H - 14}" fill="#222E46"/>`;
-          for (let ly = sy + 18; ly < GROUND; ly += 4) front += `<line x1="${f1(bx + 8)}" y1="${ly}" x2="${f1(bx + bw - 8)}" y2="${ly}" stroke="#2D3A55" stroke-width="1"/>`;
+          front += `<rect x="${f1(bx + 8)}" y="${sy + 14}" width="${f1(bw - 16)}" height="${SHOP_H - 14}" fill="#C3C8CE"/>`;
+          for (let ly = sy + 18; ly < GROUND; ly += 4) front += `<line x1="${f1(bx + 8)}" y1="${ly}" x2="${f1(bx + bw - 8)}" y2="${ly}" stroke="#A6ADB5" stroke-width="1"/>`;
         }
-        front += `<rect x="${f1(bx + 6)}" y="${sy - 13}" width="${f1(bw - 12)}" height="10" rx="1.5" fill="${SIGN[Math.floor(r() * SIGN.length)]}" opacity=".5"/>`;
-        front += `<rect x="${f1(bx)}" y="${sy + 6}" width="7" height="${SHOP_H - 6}" fill="#18233A"/>`;
+        front += `<rect x="${f1(bx + 6)}" y="${sy - 13}" width="${f1(bw - 12)}" height="10" rx="1.5" fill="${SIGN[Math.floor(r() * SIGN.length)]}" opacity=".9"/>`;
+        front += `<rect x="${f1(bx)}" y="${sy + 6}" width="7" height="${SHOP_H - 6}" fill="#7A6C61"/>`;
       }
-      if (b.plate) front += `<rect x="${b.x + 14}" y="${sy + 20}" width="12" height="7" rx="1" fill="#1D4E9E" stroke="#DCE6F7" stroke-width=".8"/>`;   // 門牌
+      if (b.plate) front += `<rect x="${b.x + 14}" y="${sy + 20}" width="12" height="7" rx="1" fill="#1D4E9E" stroke="#FFFFFF" stroke-width=".8"/>`;   // 門牌
     });
     // 直立招牌
-    front += `<rect x="236" y="${GROUND - SHOP_H - 96}" width="13" height="78" rx="2" fill="#B8473A" opacity=".75"/><rect x="239" y="${GROUND - SHOP_H - 90}" width="7" height="66" rx="1" fill="#F2C9A8" opacity=".35"/>` +
-      `<rect x="753" y="${GROUND - SHOP_H - 84}" width="13" height="66" rx="2" fill="#2C8178" opacity=".75"/><rect x="756" y="${GROUND - SHOP_H - 78}" width="7" height="54" rx="1" fill="#BFE7DF" opacity=".3"/>`;
+    front += `<rect x="236" y="${GROUND - SHOP_H - 96}" width="13" height="78" rx="2" fill="#D9573F"/><rect x="239" y="${GROUND - SHOP_H - 90}" width="7" height="66" rx="1" fill="#FFF3E6" opacity=".55"/>` +
+      `<rect x="753" y="${GROUND - SHOP_H - 84}" width="13" height="66" rx="2" fill="#2F9C8F"/><rect x="756" y="${GROUND - SHOP_H - 78}" width="7" height="54" rx="1" fill="#F1FFFC" opacity=".5"/>`;
     // 人行道、馬路、路燈
-    front += `<rect x="${X0}" y="${GROUND}" width="${X1 - X0}" height="14" fill="#111A2D"/><rect x="${X0}" y="${GROUND + 14}" width="${X1 - X0}" height="2" fill="#1F2A42"/><rect x="${X0}" y="${GROUND + 16}" width="${X1 - X0}" height="${H - GROUND - 16}" fill="#0A101D"/>`;
-    for (let x = X0 + 10; x < X1; x += 64) front += `<rect x="${x}" y="${GROUND + 37}" width="30" height="2" fill="#26314A"/>`;
+    front += `<rect x="${X0}" y="${GROUND}" width="${X1 - X0}" height="14" fill="#DAD3C8"/><rect x="${X0}" y="${GROUND + 14}" width="${X1 - X0}" height="2" fill="#B8AFA2"/><rect x="${X0}" y="${GROUND + 16}" width="${X1 - X0}" height="${H - GROUND - 16}" fill="#8F979F"/>`;
+    for (let x = X0 + 10; x < X1; x += 64) front += `<rect x="${x}" y="${GROUND + 37}" width="30" height="2" fill="#F4F2EC"/>`;
     for (const lx of [-380, -60, 620, 1022, 1300, 1640]) {
       front += `<polygon points="${lx + 16},${GROUND - 151} ${lx + 26},${GROUND - 151} ${lx + 82},${GROUND} ${lx - 36},${GROUND}" fill="url(#${p}Cone)"/>` +
-        `<ellipse cx="${lx + 21}" cy="${GROUND + 6}" rx="56" ry="6" fill="#FFC56B" opacity=".14"/>` +
-        `<rect x="${lx - 2}" y="${GROUND - 150}" width="4" height="150" fill="#2A3753"/><path d="M${lx} ${GROUND - 150} q 6 -8 20 -6" stroke="#2A3753" stroke-width="3" fill="none"/>` +
+        `<ellipse cx="${lx + 21}" cy="${GROUND + 6}" rx="56" ry="6" fill="#FFD48A" opacity=".35"/>` +
+        `<rect x="${lx - 2}" y="${GROUND - 150}" width="4" height="150" fill="#6F7A86"/><path d="M${lx} ${GROUND - 150} q 6 -8 20 -6" stroke="#6F7A86" stroke-width="3" fill="none"/>` +
         `<rect x="${lx + 14}" y="${GROUND - 158}" width="15" height="5" rx="2" fill="#FFE3AA"/>`;
     }
 
     const defs = `<defs>
-      <linearGradient id="${p}Warm" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFDB93"/><stop offset="1" stop-color="#FFAC3E"/></linearGradient>
-      <linearGradient id="${p}Dim" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F0B460"/><stop offset="1" stop-color="#C9802B"/></linearGradient>
-      <linearGradient id="${p}Tv" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#B4DAFF"/><stop offset="1" stop-color="#5F95DE"/></linearGradient>
-      <linearGradient id="${p}Shop" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F7C277" stop-opacity=".85"/><stop offset="1" stop-color="#C98A3A" stop-opacity=".55"/></linearGradient>
-      <linearGradient id="${p}Cone" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFC56B" stop-opacity=".34"/><stop offset="1" stop-color="#FFC56B" stop-opacity="0"/></linearGradient>
-      <pattern id="${p}Tile" width="10" height="6" patternUnits="userSpaceOnUse"><path d="M0 5.5H10" stroke="#FFFFFF" stroke-opacity=".035"/></pattern>
+      <linearGradient id="${p}Warm" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFE6A6"/><stop offset="1" stop-color="#FFBE55"/></linearGradient>
+      <linearGradient id="${p}Dim" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F9D28A"/><stop offset="1" stop-color="#EBA445"/></linearGradient>
+      <linearGradient id="${p}Tv" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#D8ECFF"/><stop offset="1" stop-color="#93BEEE"/></linearGradient>
+      <linearGradient id="${p}Shop" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFE3AE"/><stop offset="1" stop-color="#F0BC6C"/></linearGradient>
+      <linearGradient id="${p}Cone" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFD88F" stop-opacity=".45"/><stop offset="1" stop-color="#FFC56B" stop-opacity="0"/></linearGradient>
+      <pattern id="${p}Tile" width="10" height="6" patternUnits="userSpaceOnUse"><path d="M0 5.5H10" stroke="#5C4E44" stroke-opacity=".07"/></pattern>
       <filter id="${p}Glow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="7"/></filter>
     </defs>`;
     const svg = `<svg viewBox="${X0} 0 ${X1 - X0} ${H}" preserveAspectRatio="xMidYMax slice" aria-hidden="true">${defs}${back}${bodies}<g class="glows" filter="url(#${p}Glow)">${glows}</g>${units}${front}</svg>`;
     return { svg, dark, units: u };
   }
 
-  /** 夜空的星星（開場整個舞台的背景） */
+  /** 黃昏的天空：幾朵雲（開場整個舞台的背景） */
   function sky() {
-    const r = rng(5);
-    let s = '';
-    for (let i = 0; i < 64; i++) s += `<circle cx="${f1(r() * 1600)}" cy="${f1(r() * 560)}" r="${f1(0.5 + r() * 0.9)}" fill="#DCE6F7" opacity="${f1(0.16 + r() * 0.5)}"/>`;
-    return `<svg viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMin slice" aria-hidden="true">${s}</svg>`;
+    const cloud = (x, y, k) => `<g transform="translate(${x} ${y}) scale(${k})" fill="#FFFFFF" opacity=".85"><ellipse cx="0" cy="22" rx="78" ry="20"/><circle cx="-30" cy="10" r="26"/><circle cx="8" cy="0" r="34"/><circle cx="44" cy="14" r="22"/></g>`;
+    return `<svg viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMin slice" aria-hidden="true">${cloud(840, 92, .8)}${cloud(1500, 470, .7)}${cloud(96, 520, .6)}${cloud(620, 40, .45)}</svg>`;
   }
 
   /* ================= 示範數字（全部由 calc.js 計算） ================= */
