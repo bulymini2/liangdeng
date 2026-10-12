@@ -16,7 +16,7 @@
 
 ## 畫面與動效
 
-- 字體只用思源黑體（Noto Sans TC）及系統備援，不要再加其他字體。
+- 字體只用思源黑體（Noto Sans TC）及系統備援，只載入 400 與 500 兩種粗細，不用粗體（700 以上）；字距維持 0，層級靠字級與顏色。
 - 視覺方向：亮色、暖黑字（#2B2622）、單一品牌色燈橘（`--lamp`），膠囊按鈕；不用發光、霓虹與深色卡片。開場（`#view-intro`）永遠是亮色，工作畫面跟著系統深淺色。
 - 動效放在 `js/motion.js`，一律尊重「減少動態效果」（`LD.motion.reduced()` 與 CSS 的 `prefers-reduced-motion`）。端到端測試用 `reducedMotion: 'reduce'` 執行。
 - 中文的標題、導言、結論用 `word-break: keep-all` 只在標點換行。iPhone Safari 在 keep-all 時不會自己在中文標點後換行，所以標點後要有零寬空白：靜態文字由 `app.js` 啟動時的 `LD.util.softBreaks` 處理，動態產生的句子用 `LD.util.phrase`（同時把數字和單位黏住）。加了 keep-all 的元素也要加 `overflow-wrap: anywhere` 當保險。

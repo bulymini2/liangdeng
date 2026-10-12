@@ -19,14 +19,15 @@
 .bar-zero{position:absolute;top:-3px;bottom:-3px;width:1px;background:var(--axis)}
 .report{display:grid;gap:18px;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:12px;padding:18px;font-size:14px;line-height:1.7;min-width:0}
 .report h1{font-size:19px;margin:0;line-height:1.35}
-.report h2{font-size:14px;margin:0 0 6px;letter-spacing:.06em;color:var(--muted)}
+.report h2{font-size:14px;margin:0 0 6px;letter-spacing:0;color:var(--muted)}
 .report section{display:grid;gap:8px;min-width:0}
 .rp-head{display:flex;gap:14px;align-items:center;flex-wrap:wrap;border-bottom:2px solid #1C2A42;padding-bottom:12px}
 .rp-plate{background:#0B1322;color:#fff;border-radius:10px;padding:7px 14px;display:grid;line-height:1.25;box-shadow:inset 0 0 0 1px rgba(255,181,71,.45)}
-.rp-plate b{font-size:18px;letter-spacing:.14em;font-weight:900;color:#FFB547;font-family:var(--font-display,inherit)}
+.rp-plate b{font-size:18px;letter-spacing:.08em;font-weight:500;color:#FFB547;font-family:var(--font-display,inherit)}
 .rp-plate span{font-size:10.5px;opacity:.9}
 .rp-meta p{margin:2px 0 0;color:var(--ink-2);font-size:13px}
-.rp-lead{font-size:16px;font-weight:700;margin:0}
+.rp-lead{font-size:16px;font-weight:500;margin:0}
+.report h1,.report h2,.report h3,.report b,.report strong,.report th{font-weight:500}
 .rp-note{margin:0;font-size:12.5px;color:var(--ink-2)}
 .rp-two{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:10px}
 .rp-two figure{margin:0;display:grid;gap:4px}
@@ -84,7 +85,7 @@
   /** 可以直接用瀏覽器打開、傳給屋主的完整 HTML 檔。 */
   function reportDocument(v, img) {
     return '<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>亮燈空屋評估報告</title>' +
-      '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap">' +
+      '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500&display=swap">' +
       `<style>${STANDALONE_CSS}${REPORT_CSS}</style></head><body><main>${reportHTML(v, img)}</main></body></html>`;
   }
 
